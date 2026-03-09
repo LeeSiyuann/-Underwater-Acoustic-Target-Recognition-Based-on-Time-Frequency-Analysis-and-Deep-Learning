@@ -1,5 +1,7 @@
 # DeepShip 船舶噪声分类项目
 
+🌐 语言: [English](./README.md) | [中文](./README_CN.md)
+
 本项目实现了一个完整的深度学习流水线，用于基于 DeepShip 数据集对船舶类型（Cargo, Tanker, Tug, Passengership）进行分类。项目涵盖了从原始音频预处理、特征提取、降维可视化分析到多模型对比训练的全过程。
 
 ## 项目结构

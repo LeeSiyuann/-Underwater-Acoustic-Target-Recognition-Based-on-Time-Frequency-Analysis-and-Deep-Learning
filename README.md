@@ -1,5 +1,7 @@
 # DeepShip Classification Project
 
+🌐 Language: [English](./README.md) | [中文](./README_CN.md)
+
 This project implements a comprehensive deep learning pipeline for classifying ship types (Cargo, Tanker, Tug, Passengership) using the DeepShip dataset. It covers the entire workflow from raw audio preprocessing to feature extraction, dimensionality reduction analysis, and comparative model training.
 
 ## Project Structure
