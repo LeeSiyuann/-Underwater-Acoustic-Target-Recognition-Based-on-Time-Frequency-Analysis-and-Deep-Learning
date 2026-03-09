@@ -1,0 +1,137 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
+import os
+from tqdm import tqdm
+import seaborn as sns
+import pandas as pd
+
+# ======================
+# 全局配置
+# ======================
+FEATURE_DIR = "feature_data"
+SAVE_DIR = "dim_reduction_results"
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+# 随机种子，保证 t-SNE 结果可复现
+RANDOM_STATE = 42
+# t-SNE 采样数量限制（如果数据量太大，t-SNE 会很慢，这里设置上限）
+MAX_SAMPLES = 2000
+
+def load_and_preprocess(feature_name, y_labels):
+    """
+    加载并预处理特征数据
+    :param feature_name: 特征文件名 (e.g., "X_mel.npy")
+    :param y_labels: 标签数据
+    :return: 展平并标准化后的特征, 对应的标签 (如果采样了)
+    """
+    print(f"Loading {feature_name}...")
+    X = np.load(os.path.join(FEATURE_DIR, feature_name))
+    
+    # 如果样本数超过限制，进行随机采样
+    if len(X) > MAX_SAMPLES:
+        print(f"Subsampling from {len(X)} to {MAX_SAMPLES} for efficiency...")
+        indices = np.random.RandomState(RANDOM_STATE).choice(len(X), MAX_SAMPLES, replace=False)
+        X = X[indices]
+        y = y_labels[indices]
+    else:
+        y = y_labels
+
+    # 展平特征：(N, H, W) -> (N, H*W)
+    # 因为 PCA/t-SNE 需要二维输入 (样本数, 特征维度)
+    print(f"Original shape: {X.shape}")
+    X_flat = X.reshape(len(X), -1)
+    print(f"Flattened shape: {X_flat.shape}")
+
+    # 标准化 (Standardization): 均值为0，方差为1
+    # 这对 PCA 和 t-SNE 都非常重要
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_flat)
+    
+    return X_scaled, y
+
+def plot_dim_reduction(X_pca, X_tsne, y, label_map_inv, feature_name):
+    """
+    绘制 PCA 和 t-SNE 的对比图
+    """
+    # 将标签索引转换为名称
+    y_names = [label_map_inv[label] for label in y]
+    
+    # 创建 DataFrame 方便 Seaborn 绘图
+    df_pca = pd.DataFrame({'Component 1': X_pca[:, 0], 'Component 2': X_pca[:, 1], 'Class': y_names})
+    df_tsne = pd.DataFrame({'Dimension 1': X_tsne[:, 0], 'Dimension 2': X_tsne[:, 1], 'Class': y_names})
+
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8))
+    
+    # 1. PCA Plot
+    sns.scatterplot(
+        x='Component 1', y='Component 2', hue='Class', 
+        data=df_pca, ax=axes[0], palette='viridis', s=60, alpha=0.7
+    )
+    axes[0].set_title(f'PCA - {feature_name}', fontsize=16)
+    axes[0].grid(True, linestyle='--', alpha=0.5)
+    
+    # 2. t-SNE Plot
+    sns.scatterplot(
+        x='Dimension 1', y='Dimension 2', hue='Class', 
+        data=df_tsne, ax=axes[1], palette='viridis', s=60, alpha=0.7
+    )
+    axes[1].set_title(f't-SNE - {feature_name}', fontsize=16)
+    axes[1].grid(True, linestyle='--', alpha=0.5)
+
+    plt.tight_layout()
+    save_path = os.path.join(SAVE_DIR, f"dr_{feature_name}.png")
+    plt.savefig(save_path)
+    print(f"Saved visualization to {save_path}")
+    plt.close()
+
+def run_analysis():
+    # 1. 加载标签
+    print("Loading labels...")
+    y_all = np.load(os.path.join(FEATURE_DIR, "y_labels.npy"))
+    label_map_inv = {0: "Cargo", 1: "Tanker", 2: "Tug", 3: "Passengership"}
+
+    # 定义要分析的特征列表
+    # 注意：STFT 数据量太大 (1.4GB)，直接做 PCA/t-SNE 可能会内存溢出或极慢
+    # 这里我们主要对比 Mel, MFCC, CQT
+    feature_files = [
+        "X_mel.npy",
+        "X_mfcc.npy", 
+        "X_cqt.npy"
+    ]
+
+    for f_name in feature_files:
+        print(f"\n{'='*40}")
+        print(f"Processing {f_name}...")
+        print(f"{'='*40}")
+
+        try:
+            # 2. 数据预处理
+            X_scaled, y_subset = load_and_preprocess(f_name, y_all)
+
+            # 3. PCA (主成分分析) - 线性降维
+            print("Running PCA...")
+            pca = PCA(n_components=2, random_state=RANDOM_STATE)
+            X_pca = pca.fit_transform(X_scaled)
+            print(f"PCA explained variance ratio: {pca.explained_variance_ratio_}")
+
+            # 4. t-SNE (t-分布邻域嵌入) - 非线性流形学习
+            print("Running t-SNE (this may take a while)...")
+            # perplexity 困惑度：通常在 5-50 之间，影响局部/全局结构的平衡
+            tsne = TSNE(n_components=2, perplexity=30, n_iter=1000, random_state=RANDOM_STATE, init='pca', learning_rate='auto')
+            X_tsne = tsne.fit_transform(X_scaled)
+
+            # 5. 可视化
+            plot_dim_reduction(X_pca, X_tsne, y_subset, label_map_inv, f_name.replace(".npy", ""))
+
+        except Exception as e:
+            print(f"Error processing {f_name}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    print("\nAnalysis complete. Results saved in 'dim_reduction_results' directory.")
+
+if __name__ == "__main__":
+    run_analysis()

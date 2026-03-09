@@ -1,0 +1,21 @@
+# 忽略指定的项目文件夹
+exercise_tf/
+experience/
+dim_reduction_results.old/
+DeepShip-main/
+dl_comparison_results_gpu/
+dim_reduction_results/
+__pycache__/
+feature_data/
+processed_data/
+
+# Windows系统文件
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# 编辑器临时文件
+*.swp
+*.swo
+*~
+
