@@ -8,6 +8,7 @@ dim_reduction_results/
 __pycache__/
 feature_data/
 processed_data/
+.trae/
 
 # Windows系统文件
 Thumbs.db
@@ -19,3 +20,7 @@ $RECYCLE.BIN/
 *.swo
 *~
 
+李思源开题报告最终.md
+analysis_tutorial.md
+report.md
+work.md

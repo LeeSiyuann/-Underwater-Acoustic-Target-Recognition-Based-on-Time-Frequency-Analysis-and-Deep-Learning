@@ -13,6 +13,11 @@ This project implements a comprehensive deep learning pipeline for classifying s
 ├── dimensionality_reduction_analysis.py # PCA & t-SNE analysis
 ├── deep_learning_models.py             # PyTorch model definitions
 ├── train_comparison.py                 # Main training and evaluation loop
+├── resume_training.py                  # Resume training and OOM protection
+├── train_fusion.py                     # Multi-feature fusion (Mel+MFCC) experiment
+├── plot_global_comparison.py           # Global comparison charts generation
+├── evaluate_complexity.py              # Model complexity & inference time evaluation
+├── noise_robustness_test.py            # Noise robustness & SNR testing
 ├── run_pipeline.py                     # Automation script for the full pipeline
 ├── DeepShip-main/                      # Original dataset directory
 ├── processed_data/                     # Preprocessed audio data (.npy)
@@ -106,6 +111,15 @@ python dimensionality_reduction_analysis.py
 
 # Step 4: Train Models
 python train_comparison.py
+
+# Step 5: (Optional) Resume training or run fusion experiment
+python resume_training.py
+python train_fusion.py
+
+# Step 6: Global Evaluation & Analysis
+python plot_global_comparison.py
+python evaluate_complexity.py
+python noise_robustness_test.py
 ```
 
 ## Requirements

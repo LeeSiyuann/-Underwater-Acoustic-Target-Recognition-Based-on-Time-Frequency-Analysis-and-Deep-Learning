@@ -13,6 +13,11 @@
 ├── dimensionality_reduction_analysis.py # PCA & t-SNE 降维分析
 ├── deep_learning_models.py             # PyTorch 模型定义
 ├── train_comparison.py                 # 模型训练与评估主程序
+├── resume_training.py                  # 断点续训与OOM保护脚本
+├── train_fusion.py                     # 多特征融合网络(Mel+MFCC)实验
+├── plot_global_comparison.py           # 全局对比图表生成
+├── evaluate_complexity.py              # 模型参数量与推理耗时评估
+├── noise_robustness_test.py            # 鲁棒性与抗噪实验
 ├── run_pipeline.py                     # 全流程自动化运行脚本
 ├── DeepShip-main/                      # 原始数据   
 ├── processed_data/                     # 预处理后的音频数据(.npy)
@@ -106,6 +111,15 @@ python dimensionality_reduction_analysis.py
 
 # 步骤 4: 模型训练
 python train_comparison.py
+
+# 步骤 5: (可选) 断点续训或特征融合实验
+python resume_training.py
+python train_fusion.py
+
+# 步骤 6: 结果评估与分析生成
+python plot_global_comparison.py
+python evaluate_complexity.py
+python noise_robustness_test.py
 ```
 
 ## 环境要求
