@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会话全过程总结与代码修改归档</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+
+    :root {
+      --bg: #f5f7fb;
+      --paper: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #1d4ed8;
+      --accent-soft: #dbeafe;
+      --code-bg: #0f172a;
+      --code-text: #e5e7eb;
+      --kw: #93c5fd;
+      --fn: #f9a8d4;
+      --str: #86efac;
+      --cm: #94a3b8;
+      --num: #fdba74;
+      --warn: #92400e;
+      --warn-bg: #fef3c7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Arial, sans-serif;
+      line-height: 1.72;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      padding: 12px 16px;
+      background: rgba(245, 247, 251, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .toolbar button,
+    .toolbar a {
+      appearance: none;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .toolbar a.secondary,
+    .toolbar button.secondary {
+      background: #fff;
+      color: var(--accent);
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 24px auto 56px;
+      padding: 0 20px;
+    }
+
+    .paper {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      padding: 28px 34px 36px;
+    }
+
+    h1, h2, h3, h4 {
+      color: #111827;
+      line-height: 1.35;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    h1 {
+      font-size: 30px;
+      margin: 0 0 10px;
+    }
+
+    h2 {
+      font-size: 22px;
+      margin: 32px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin: 22px 0 10px;
+    }
+
+    h4 {
+      font-size: 16px;
+      margin: 18px 0 8px;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .meta {
+      margin: 16px 0 20px;
+      padding: 14px 16px;
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+    }
+
+    .notice {
+      margin: 16px 0;
+      padding: 12px 14px;
+      background: var(--warn-bg);
+      color: var(--warn);
+      border-left: 4px solid #f59e0b;
+      border-radius: 10px;
+    }
+
+    ul, ol {
+      margin: 8px 0 12px 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 14px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f3f4f6;
+      font-weight: 700;
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #fcfcfd;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    pre {
+      margin: 12px 0 16px;
+      padding: 14px 16px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 12px;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-family: Consolas, "Cascadia Code", "SFMono-Regular", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    code.inline {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-family: Consolas, "Cascadia Code", monospace;
+      font-size: 0.95em;
+    }
+
+    .kw { color: var(--kw); }
+    .fn { color: var(--fn); }
+    .str { color: var(--str); }
+    .cm { color: var(--cm); }
+    .num { color: var(--num); }
+
+    .toc {
+      columns: 2;
+      column-gap: 30px;
+      margin: 10px 0 22px;
+    }
+
+    .toc li {
+      break-inside: avoid;
+    }
+
+    .page-break {
+      break-before: page;
+      page-break-before: always;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .toolbar {
+        display: none !important;
+      }
+
+      .container {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .paper {
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+      }
+
+      a {
+        color: #111827;
+        text-decoration: none;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script>
+    function printDocument() {
+      window.print();
+    }
+  </script>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="printDocument()">打印 / 导出 PDF</button>
+    <a class="secondary" href="#timeline">跳到时间线</a>
+    <a class="secondary" href="#files">跳到代码修改</a>
+    <a class="secondary" href="file:///d:/文档/trae/essay">打开项目目录</a>
+  </div>
+
+  <div class="container">
+    <article class="paper">
+      <h1>会话全过程总结与代码修改归档</h1>
+      <p class="lead">文档用途：完整归档本次会话开始以来的全部历史沟通、需求演化、代码编写与修改场景、问题排查过程、实验产物沉淀情况，并提供适合浏览器打印导出为 PDF 的规范样式。</p>
+
+      <div class="meta">
+        <strong>项目主题：</strong>基于 DeepShip 数据集、时频分析与深度学习的船舶噪声分类系统。<br>
+        <strong>工作区：</strong><a href="file:///d:/文档/trae/essay">d:\文档\trae\essay</a><br>
+        <strong>导出方式：</strong>使用浏览器打开本 HTML，点击顶部“打印 / 导出 PDF”按钮，或按 <code class="inline">Ctrl + P</code> 直接导出。页面已设置 A4 纸张、标准边距、分页友好样式、代码块高亮和防截断布局。
+      </div>
+
+      <div class="notice">
+        说明：本文档基于本次会话可访问到的全部上下文忠实整理。对“历史中曾被引用但当前工作区目录快照里未直接见到的产物”，文档会明确标注“已讨论/已规划/当前目录未核验到”，避免把历史沟通与当前实物状态混淆。
+      </div>
+
+      <h2>目录</h2>
+      <ol class="toc">
+        <li><a href="#overview">会话总览</a></li>
+        <li><a href="#timeline">按时间顺序的完整对话脉络</a></li>
+        <li><a href="#requirements">需求变更总表</a></li>
+        <li><a href="#files">涉及的代码撰写与修改场景</a></li>
+        <li><a href="#issues">关键问题、报错与修复过程</a></li>
+        <li><a href="#artifacts">实验产物与输出文件归档</a></li>
+        <li><a href="#docs">文档类交付物演化</a></li>
+        <li><a href="#current">当前项目状态与待确认事项</a></li>
+      </ol>
+
+      <h2 id="overview">1. 会话总览</h2>
+      <p>本次会话围绕一个完整的本科毕业设计项目展开，目标是基于 DeepShip 数据集，构建一条从原始音频预处理、四类时频特征提取、可视化分析、多模型训练、结果评估、断点续训、复杂度测算、鲁棒性测试、特征融合到论文写作支撑文档输出的完整流水线。整个会话中，需求不是一次性固定，而是经历了多轮细化和修订：模型种类扩展、部分模型删除、日志策略调整、显存管理优化、结果补绘、汇总脚本补全、论文材料生成与纠错等。</p>
+      <p>从最终工作区状态来看，项目已经形成了较完备的研究与工程双栈成果：一方面具有核心算法脚本与训练脚本，另一方面也沉淀了大量实验产物，包括最优权重、训练日志、训练历史曲线、混淆矩阵、PR 曲线、全局对比图、模型复杂度对比图、抗噪曲线与热力图等。</p>
+
+      <h2 id="timeline">2. 按时间顺序的完整对话脉络</h2>
+
+      <h3>阶段 A：项目主体目标建立</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>阶段</th>
+            <th>用户核心诉求</th>
+            <th>落实结果</th>
+            <th>对应文件</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>初始需求</td>
+            <td>构建多种先进深度学习模型作为分类器，覆盖 RNN、ResNet、CNN、Transformer，并且能用于四种特征数据，要求超参数接口与充分注释。</td>
+            <td>建立了多模型框架与主训练思路，后续演化为 7 类单流模型与 1 类融合模型。</td>
+            <td><a href="file:///d:/文档/trae/essay/deep_learning_models.py">deep_learning_models.py</a>、<a href="file:///d:/文档/trae/essay/train_comparison.py">train_comparison.py</a></td>
+          </tr>
+          <tr>
+            <td>环境约束 уточ</td>
+            <td>强调只有 yolo5 环境具备 CUDA 版 torch，要求恢复 <code class="inline">torchvision</code> 实现的 ResNet，用 GPU 训练，补足准确率、精确率、召回率、F1、ROC-AUC 和曲线绘图，并且将 STFT 纳入训练。</td>
+            <td>模型实现从手写 ResNet 切换回 torchvision 风格；训练脚本扩展为多指标评估与图像保存；GPU 使用逻辑明确化。</td>
+            <td><a href="file:///d:/文档/trae/essay/deep_learning_models.py">deep_learning_models.py</a>、<a href="file:///d:/文档/trae/essay/train_comparison.py">train_comparison.py</a></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>阶段 B：模型与评估要求细化</h3>
+      <p>用户随后继续细化训练要求，提出了明确的模型与产物清单：</p>
+      <ol>
+        <li>在已有模型上追加 <code class="inline">ResNet34</code>、<code class="inline">ResNet50</code>、<code class="inline">RNN</code>，并曾要求加入 <code class="inline">Swin Transformer</code> 与 <code class="inline">ViT</code>。</li>
+        <li>图像必须包含 <code class="inline">Loss</code>、<code class="inline">Accuracy</code>、<code class="inline">Precision</code>、<code class="inline">Recall</code>、<code class="inline">PR</code>、<code class="inline">ROC-AUC</code> 与 <code class="inline">F1</code>，并保存为 <code class="inline">svg</code> 与 <code class="inline">pdf</code>，同时保存计算过程数值为 <code class="inline">csv</code>。</li>
+        <li>增大 batch size，优化 GPU 利用率，抑制训练时控制台里重复刷出的设备信息。</li>
+        <li>要求日志自动保存，但又不希望出现基于时间戳的 <code class="inline">training_log_YYYYMMDD_HHMMSS.txt</code> 文件。</li>
+      </ol>
+      <p>这一阶段的结果是：训练脚本逐步形成以 <code class="inline">CSV + PNG/SVG/PDF</code> 为核心产物的结构化输出方式，而非传统文本日志落盘。</p>
+
+      <h3>阶段 C：日志、显存和系统性能调优</h3>
+      <p>在完成基本训练能力后，用户把重点转向工程化问题，主要包括：</p>
+      <ul>
+        <li>不要再生成 <code class="inline">training_log_YYYYMMDD_HHMMSS.txt</code> 这类文本日志。</li>
+        <li>询问“除了 batch size 还有什么影响显存占用”“显存利用率高但 GPU 核心运算占用低怎么办”。这一轮主要是概念性解释，没有要求改代码。</li>
+        <li>要求删除 ViT 与 SwinTransformer，并把全局 batch size 固定为 2048。</li>
+        <li>要求针对每一种“特征 × 模型”组合记录显存占用，最终保存为 CSV。</li>
+        <li>说明当前训练环境为 Linux、22 vCPU、RTX Pro 6000、110G 内存，要求优化 <code class="inline">num_workers</code>。</li>
+        <li>进一步追加限制：当特征为 STFT 时，batch size 自动调整为 512。</li>
+      </ul>
+      <p>这一阶段是项目从“能训练”走向“能稳定高效训练”的关键转折点，直接促成了显存记录、动态 batch size 与 DataLoader 优化逻辑的定型。</p>
+
+      <h3>阶段 D：结果后处理与采样率变更分析</h3>
+      <p>用户接着提出了两类偏分析性质的需求：</p>
+      <ol>
+        <li>不修改代码，仅依据 <a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/gpu_memory_usage.csv">gpu_memory_usage.csv</a> 统计运算步骤显存消耗，并给出以 20GB 显存为基准的推荐 batch size，最终保存到 <a href="file:///d:/文档/trae/essay/recommend_batchsize.csv">recommend_batchsize.csv</a>。</li>
+        <li>不改代码，只分析如果把采样率从 32kHz 调整到 16kHz，几个主脚本应该怎么改。该轮分析覆盖了预处理、特征提取、训练加载、模型适配和降维分析脚本。</li>
+      </ol>
+
+      <h3>阶段 E：训练中断、结果补救与断点续训</h3>
+      <p>在实际跑实验后，用户反馈 <code class="inline">train_comparison.py</code> 在 <code class="inline">STFT + ResNet50</code> 组合上爆显存中止，并提出两个紧迫问题：<code class="inline">final_comparison_results.csv</code> 是如何产生的、能否从已有结果恢复；以及是否能在不修改原训练脚本的前提下，从中断位置继续跑。</p>
+      <p>这一阶段产生了两个专门的“补救型”脚本：</p>
+      <ul>
+        <li><a href="file:///d:/文档/trae/essay/resume_training.py">resume_training.py</a>：通过扫描已有 <code class="inline">training_log_*.csv</code> 恢复已完成任务，并继续训练未完成的任务。</li>
+        <li><a href="file:///d:/文档/trae/essay/plot_missing_resnet50_stft.py">plot_missing_resnet50_stft.py</a>：针对因异常中断而未输出的 <code class="inline">ResNet50_X_stft</code> PR 曲线和混淆矩阵进行离线补绘。</li>
+      </ul>
+      <p>中间还出现了一次脚本疏漏：<code class="inline">resume_training.py</code> 使用了 <code class="inline">plt</code> 却漏掉了 <code class="inline">matplotlib.pyplot</code> 导入，用户指出后进行了修复。</p>
+
+      <h3>阶段 F：论文与中期材料生成</h3>
+      <p>在工程链条基本成型后，用户开始转向毕业设计材料整理，希望基于项目当前全部上下文生成中期检查报告、工作总结、论文结果分析教程，并同步更新中英文 README。期间发生了多次内容补全与纠错，包括：</p>
+      <ul>
+        <li>生成 <a href="file:///d:/文档/trae/essay/report.md">report.md</a> 作为中期检查报告。</li>
+        <li>生成 <a href="file:///d:/文档/trae/essay/work.md">work.md</a>，用于按“任务书目标—实际工作—代码链接—实验产物链接”形式梳理工作。</li>
+        <li>更新 <a href="file:///d:/文档/trae/essay/README.md">README.md</a> 与 <a href="file:///d:/文档/trae/essay/README_CN.md">README_CN.md</a>，把新加入的分析、复杂度、鲁棒性、融合、续训脚本纳入结构说明与使用说明。</li>
+        <li>生成 <a href="file:///d:/文档/trae/essay/analysis_tutorial.md">analysis_tutorial.md</a>，并在后续应用户指出的遗漏问题，多次补充对特征对比图、训练日志、全局指标图、复杂度图与鲁棒性热力图的分析教程。</li>
+      </ul>
+
+      <h3>阶段 G：收尾要求与当前任务</h3>
+      <p>本轮最后，用户要求创建一份 HTML 文档，完整梳理整个会话以来的全部历史内容，并具备直接浏览器打印为 PDF 的能力。本文档即为该要求的落实结果。</p>
+
+      <div class="page-break"></div>
+
+      <h2 id="requirements">3. 需求变更总表</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>变更主题</th>
+            <th>最初要求</th>
+            <th>后续变化</th>
+            <th>最终状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>模型集合</td>
+            <td>先进深度学习模型：CNN / ResNet / RNN / Transformer</td>
+            <td>曾要求加入 ViT 与 Swin；后续又明确删除 ViT 与 Swin，仅保留 ResNet18/34/50、SimpleCNN、RNN、LSTM、Transformer；后来新增双流融合模型。</td>
+            <td>当前稳定模型集为 7 个单流模型 + 1 个 DualStreamFusionModel。</td>
+          </tr>
+          <tr>
+            <td>训练日志</td>
+            <td>希望日志自动保存</td>
+            <td>又要求不再生成时间戳文本日志文件</td>
+            <td>改为保存结构化 <code class="inline">training_log_*.csv</code>，控制台仅流式输出。</td>
+          </tr>
+          <tr>
+            <td>显存策略</td>
+            <td>增大 batch size 充分利用 GPU</td>
+            <td>全局设为 2048；STFT 先限制为 512；续训时对 STFT + ResNet50 进一步降到 128 以规避 OOM</td>
+            <td>形成“全局大 batch + STFT 限流 + 续训进一步限流”的分级策略。</td>
+          </tr>
+          <tr>
+            <td>结果图表</td>
+            <td>要求输出训练曲线和多指标</td>
+            <td>后续补充全局柱状图、全局热力图、核心指标图、复杂度图、鲁棒性大图与热力图</td>
+            <td>产物体系已从单模型评估扩展为全局评估体系。</td>
+          </tr>
+          <tr>
+            <td>论文支撑文档</td>
+            <td>中期报告</td>
+            <td>扩展为工作总结、README 更新、分析教程、会话 HTML 归档</td>
+            <td>形成一套完整的毕业设计文档包。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="files">4. 涉及的代码撰写与修改场景</h2>
+
+      <h3>4.1 模型定义：<a href="file:///d:/文档/trae/essay/deep_learning_models.py">deep_learning_models.py</a></h3>
+      <div class="grid">
+        <div class="card">
+          <h4>修改目的</h4>
+          <p>统一承载单流模型定义，覆盖 CNN、ResNet、RNN、LSTM、Transformer，并通过 <code class="inline">get_model()</code> 对外提供模型工厂接口。</p>
+        </div>
+        <div class="card">
+          <h4>关键演化</h4>
+          <ul>
+            <li>最早按需求加入多类网络。</li>
+            <li>在环境确认后改回 <code class="inline">torchvision.models</code> 风格 ResNet。</li>
+            <li>加入 <code class="inline">ResNet34</code>、<code class="inline">ResNet50</code>、<code class="inline">RNN</code>。</li>
+            <li>曾扩展 ViT/Swin，后按用户要求删除。</li>
+          </ul>
+        </div>
+      </div>
+      <pre><span class="cm"># 使用 torchvision 官方 ResNet，并适配单通道声谱图输入</span>
+<span class="kw">class</span> <span class="fn">ResNetBase</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, model_func, num_classes=<span class="num">4</span>, input_channels=<span class="num">1</span>):
+        self.model = model_func(weights=<span class="kw">None</span>)
+        self.model.conv1 = nn.Conv2d(input_channels, <span class="num">64</span>, kernel_size=<span class="num">7</span>, stride=<span class="num">2</span>, padding=<span class="num">3</span>, bias=<span class="kw">False</span>)
+        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)</pre>
+      <p>这段逻辑的核心意义在于：既复用成熟的残差网络结构，又让自然图像网络适配单通道声谱图输入，是项目从“通用视觉模型”向“声学时频图模型”迁移的关键一环。</p>
+
+      <h3>4.2 核心训练主程序：<a href="file:///d:/文档/trae/essay/train_comparison.py">train_comparison.py</a></h3>
+      <p>这是全项目最重要的主干脚本。它承接了绝大多数需求变更，也是后续所有结果文件的主要来源。其主要修改场景可归纳为：</p>
+      <ul>
+        <li>引入多模型训练循环，按特征文件和模型名称形成双层遍历。</li>
+        <li>根据模型类型自动切换 2D 输入与序列输入。</li>
+        <li>扩展多维评估指标：Accuracy、Precision、Recall、F1、ROC-AUC。</li>
+        <li>输出训练日志 CSV、训练历史图、混淆矩阵、PR 曲线。</li>
+        <li>记录显存峰值，生成 <code class="inline">gpu_memory_usage.csv</code>。</li>
+        <li>根据特征名动态设置 batch size；对 STFT 设置特殊限制。</li>
+        <li>根据 CPU 核数设置 <code class="inline">num_workers</code>，提升数据供给效率。</li>
+        <li>移除文本文件日志，仅保留控制台输出和结构化 CSV。</li>
+      </ul>
+      <pre><span class="cm"># 按特征动态调整 batch size，避免 STFT 爆显存</span>
+current_batch_size = STFT_BATCH_SIZE <span class="kw">if</span> <span class="str">"stft"</span> <span class="kw">in</span> feature_name.lower() <span class="kw">else</span> DEFAULT_BATCH_SIZE
+
+<span class="cm"># 针对 22 vCPU 环境提高数据加载吞吐</span>
+cpu_count = multiprocessing.cpu_count()
+num_workers = min(<span class="num">16</span>, cpu_count)</pre>
+      <p>该脚本最终产生的训练产物是按“每个模型 × 每种特征”命名的完整文件簇，这构成了后续论文分析的实证基础。</p>
+
+      <h3>4.3 显存分析与推荐 batch size：<a href="file:///d:/文档/trae/essay/calculate_recommended_batchsize.py">calculate_recommended_batchsize.py</a></h3>
+      <p>该脚本来自一个明确的后处理需求：用户不希望修改训练脚本，只想根据历史显存记录反推更合理的 batch size。它的角色不是训练，而是“实验运营优化器”。输出文件为 <a href="file:///d:/文档/trae/essay/recommend_batchsize.csv">recommend_batchsize.csv</a>。</p>
+
+      <h3>4.4 断点恢复：<a href="file:///d:/文档/trae/essay/resume_training.py">resume_training.py</a></h3>
+      <p>当 <code class="inline">ResNet50 + STFT</code> 训练阶段 OOM 中断后，为满足“不要修改现有主脚本、不要从头再跑”的要求，专门编写了断点续训脚本。它的工作机制包括：</p>
+      <ul>
+        <li>扫描已有 <code class="inline">training_log_*.csv</code>，识别已经完成的任务。</li>
+        <li>重构已完成任务的最终指标，恢复到汇总表中。</li>
+        <li>对未完成任务继续训练。</li>
+        <li>在 STFT 场景进一步使用更保守的 batch size。</li>
+      </ul>
+      <pre><span class="cm"># 续训脚本内对 STFT 采取更严格的 batch size 限流</span>
+DEFAULT_BATCH_SIZE = <span class="num">2048</span>
+STFT_BATCH_SIZE = <span class="num">128</span></pre>
+      <p>该脚本编写后用户发现遗漏了 <code class="inline">matplotlib.pyplot</code> 导入，后续又做了一次针对性修复。</p>
+
+      <h3>4.5 缺失图表补绘：<a href="file:///d:/文档/trae/essay/plot_missing_resnet50_stft.py">plot_missing_resnet50_stft.py</a></h3>
+      <p>由于一次中断导致 <code class="inline">ResNet50_X_stft</code> 的 PR 曲线与混淆矩阵未生成，因此额外创建了一个“只推理不重训”的补绘脚本。它直接加载已有权重 <a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/best_ResNet50_X_stft.pth">best_ResNet50_X_stft.pth</a>，在测试集上恢复预测结果，并重新绘制：</p>
+      <ul>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/cm_ResNet50_X_stft.png">cm_ResNet50_X_stft.png</a></li>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/pr_curve_ResNet50_X_stft.png">pr_curve_ResNet50_X_stft.png</a></li>
+      </ul>
+
+      <h3>4.6 融合实验：<a href="file:///d:/文档/trae/essay/train_fusion.py">train_fusion.py</a></h3>
+      <p>这是后期扩展出来的一个重要创新模块。最初它只训练并保存权重，后来在用户指出“只保存了模型权重，没有保存图像和指标”后，进一步被补齐为与主训练脚本同等规格的产物输出方式：</p>
+      <ul>
+        <li>新增训练历史记录 CSV：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/training_log_fusion_Mel_MFCC.csv">training_log_fusion_Mel_MFCC.csv</a></li>
+        <li>新增训练历史图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/history_fusion_Mel_MFCC.png">history_fusion_Mel_MFCC.png</a></li>
+        <li>新增混淆矩阵：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/cm_fusion_Mel_MFCC.png">cm_fusion_Mel_MFCC.png</a></li>
+        <li>新增 PR 曲线：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/pr_curve_fusion_Mel_MFCC.png">pr_curve_fusion_Mel_MFCC.png</a></li>
+        <li>新增最终结果表：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/final_fusion_results.csv">final_fusion_results.csv</a></li>
+      </ul>
+
+      <h3>4.7 全局汇总图：<a href="file:///d:/文档/trae/essay/plot_global_comparison.py">plot_global_comparison.py</a></h3>
+      <p>该脚本在第一次创建时只读取 <code class="inline">final_comparison_results.csv</code> 并生成 F1 柱状图与热力图。之后用户要求把融合实验并入全局对比，于是脚本再次升级：</p>
+      <ul>
+        <li>自动读取 <a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/final_fusion_results.csv">final_fusion_results.csv</a></li>
+        <li>合并为 <a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/final_comparison_results_with_fusion.csv">final_comparison_results_with_fusion.csv</a></li>
+        <li>额外生成 <a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/global_metric_barplot.png">global_metric_barplot.png</a></li>
+      </ul>
+
+      <h3>4.8 模型复杂度评估：<a href="file:///d:/文档/trae/essay/evaluate_complexity.py">evaluate_complexity.py</a></h3>
+      <p>该脚本用于从工程部署角度评价模型，最早负责计算参数量与推理时间，后续又被补充以支持融合模型，并增加图形化结果输出：</p>
+      <ul>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/model_complexity.csv">model_complexity.csv</a></li>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/model_parameters_comparison.png">model_parameters_comparison.png</a></li>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/model_inference_time_comparison.png">model_inference_time_comparison.png</a></li>
+      </ul>
+      <p class="small">会话中曾尝试在沙盒环境直接运行该脚本，但由于当前命令环境缺少 <code class="inline">torch</code> 而失败。该失败本身也成为历史的一部分，反映出“脚本已编写完成，但具体运行依赖用户本地训练环境”的事实。</p>
+
+      <h3>4.9 全模型鲁棒性测试：<a href="file:///d:/文档/trae/essay/noise_robustness_test.py">noise_robustness_test.py</a></h3>
+      <p>该脚本经历了两次明显演化：</p>
+      <ol>
+        <li>初始版本只测 <code class="inline">ResNet50 + STFT</code> 在不同 SNR 下的 F1 变化。</li>
+        <li>后续根据用户要求，扩展为自动读取各模型“最佳特征组合”的全模型鲁棒性测试，最终生成一张大图与一张热力图，便于全景比较不同模型在噪声加剧条件下的性能衰减。</li>
+      </ol>
+      <p>最终产物包括：</p>
+      <ul>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/robustness_all_models.csv">robustness_all_models.csv</a></li>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/robustness_curve_all_models.png">robustness_curve_all_models.png</a></li>
+        <li><a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/robustness_heatmap_all_models.png">robustness_heatmap_all_models.png</a></li>
+      </ul>
+
+      <div class="page-break"></div>
+
+      <h2 id="issues">5. 关键问题、报错与修复过程</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>问题</th>
+            <th>触发场景</th>
+            <th>处理方式</th>
+            <th>结果</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>torchvision 兼容与环境分裂</td>
+            <td>用户明确指出 base 环境只有 CPU，yolo5 环境才有 CUDA，并要求从手写 ResNet 回退到 torchvision。</td>
+            <td>模型层按官方 torchvision ResNet 改造；训练逻辑围绕 GPU 环境编写。</td>
+            <td>ResNet 系列回归标准实现，后续结果更贴近常见论文基线。</td>
+          </tr>
+          <tr>
+            <td>STFT + ResNet50 OOM</td>
+            <td>主训练脚本跑到 STFT 阶段爆显存，中断导致总表与部分图表缺失。</td>
+            <td>新增 <a href="file:///d:/文档/trae/essay/resume_training.py">resume_training.py</a>；在续训中降低 STFT batch size 到 128；新增补绘脚本恢复缺图。</td>
+            <td>保证已有结果可恢复，剩余任务可继续，缺失 CM/PR 图可重新生成。</td>
+          </tr>
+          <tr>
+            <td>resume_training.py 漏导入 matplotlib</td>
+            <td>用户指出脚本里使用了 <code class="inline">plt</code> 却没有导入。</td>
+            <td>追加 <code class="inline">import matplotlib.pyplot as plt</code>。</td>
+            <td>续训脚本能正常保存图形。</td>
+          </tr>
+          <tr>
+            <td>融合实验只保存权重、不保存图表与表格</td>
+            <td>用户发现 <a href="file:///d:/文档/trae/essay/train_fusion.py">train_fusion.py</a> 只有权重，没有像主训练脚本那样保存 CSV 与图像。</td>
+            <td>补齐训练日志、历史曲线、混淆矩阵、PR 曲线和最终结果表逻辑。</td>
+            <td>融合实验被纳入完整论文产物链。</td>
+          </tr>
+          <tr>
+            <td>全局图与鲁棒性图最初覆盖不全</td>
+            <td>用户要求把融合实验并入总图，同时鲁棒性测试改为覆盖全部模型并绘制一张大图对比。</td>
+            <td>升级全局对比脚本、复杂度脚本、鲁棒性脚本。</td>
+            <td>形成完整的项目级比较图谱。</td>
+          </tr>
+          <tr>
+            <td>说明文档不完整</td>
+            <td>用户多次指出 <a href="file:///d:/文档/trae/essay/work.md">work.md</a> 与 <a href="file:///d:/文档/trae/essay/analysis_tutorial.md">analysis_tutorial.md</a> 漏写了部分图表与分析内容。</td>
+            <td>逐轮补充 feature 对比图、training_log、global_metric_barplot、复杂度图、robustness_heatmap 等内容。</td>
+            <td>文档类交付物与工程产物一一对应。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="artifacts">6. 实验产物与输出文件归档</h2>
+      <p>以下列表基于当前工作区目录可核验结果整理，重点记录会话过程中提到并已沉淀的产物类型。</p>
+
+      <h3>6.1 特征提取产物</h3>
+      <ul>
+        <li>特征矩阵：<a href="file:///d:/文档/trae/essay/feature_data/X_stft.npy">X_stft.npy</a>、<a href="file:///d:/文档/trae/essay/feature_data/X_mel.npy">X_mel.npy</a>、<a href="file:///d:/文档/trae/essay/feature_data/X_mfcc.npy">X_mfcc.npy</a>、<a href="file:///d:/文档/trae/essay/feature_data/X_cqt.npy">X_cqt.npy</a></li>
+        <li>类别级对比图：<a href="file:///d:/文档/trae/essay/feature_data/comparison_Cargo.png">comparison_Cargo.png</a>、<a href="file:///d:/文档/trae/essay/feature_data/comparison_Tanker.png">comparison_Tanker.png</a>、<a href="file:///d:/文档/trae/essay/feature_data/comparison_Tug.png">comparison_Tug.png</a>、<a href="file:///d:/文档/trae/essay/feature_data/comparison_Passengership.png">comparison_Passengership.png</a></li>
+      </ul>
+
+      <h3>6.2 训练与评估产物</h3>
+      <ul>
+        <li>最终结果总表：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/final_comparison_results.csv">final_comparison_results.csv</a></li>
+        <li>融合并入后的总表：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/final_comparison_results_with_fusion.csv">final_comparison_results_with_fusion.csv</a></li>
+        <li>显存记录：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/gpu_memory_usage.csv">gpu_memory_usage.csv</a></li>
+        <li>单模型日志样例：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/training_log_ResNet50_X_stft.csv">training_log_ResNet50_X_stft.csv</a></li>
+        <li>单模型历史曲线样例：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/history_ResNet50_X_stft.png">history_ResNet50_X_stft.png</a></li>
+        <li>单模型混淆矩阵样例：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/cm_ResNet50_X_stft.png">cm_ResNet50_X_stft.png</a></li>
+        <li>单模型 PR 曲线样例：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/pr_curve_ResNet50_X_stft.png">pr_curve_ResNet50_X_stft.png</a></li>
+      </ul>
+
+      <h3>6.3 全局对比与复杂度产物</h3>
+      <ul>
+        <li>F1 柱状图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/global_f1_barplot.png">global_f1_barplot.png</a></li>
+        <li>F1 热力图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/global_f1_heatmap.png">global_f1_heatmap.png</a></li>
+        <li>核心指标柱状图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/global_metric_barplot.png">global_metric_barplot.png</a></li>
+        <li>复杂度表：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/model_complexity.csv">model_complexity.csv</a></li>
+        <li>参数量图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/model_parameters_comparison.png">model_parameters_comparison.png</a></li>
+        <li>推理时间图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/model_inference_time_comparison.png">model_inference_time_comparison.png</a></li>
+      </ul>
+
+      <h3>6.4 鲁棒性与融合产物</h3>
+      <ul>
+        <li>融合结果表：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/final_fusion_results.csv">final_fusion_results.csv</a></li>
+        <li>融合训练日志：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/training_log_fusion_Mel_MFCC.csv">training_log_fusion_Mel_MFCC.csv</a></li>
+        <li>融合历史图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/history_fusion_Mel_MFCC.png">history_fusion_Mel_MFCC.png</a></li>
+        <li>融合混淆矩阵：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/cm_fusion_Mel_MFCC.png">cm_fusion_Mel_MFCC.png</a></li>
+        <li>融合 PR 曲线：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/pr_curve_fusion_Mel_MFCC.png">pr_curve_fusion_Mel_MFCC.png</a></li>
+        <li>抗噪明细表：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/robustness_all_models.csv">robustness_all_models.csv</a></li>
+        <li>抗噪总曲线：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/robustness_curve_all_models.png">robustness_curve_all_models.png</a></li>
+        <li>抗噪热力图：<a href="file:///d:/文档/trae/essay/dl_comparison_results_gpu/robustness_heatmap_all_models.png">robustness_heatmap_all_models.png</a></li>
+      </ul>
+
+      <h2 id="docs">7. 文档类交付物演化</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>文档</th>
+            <th>创建/修改目的</th>
+            <th>后续补充点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a href="file:///d:/文档/trae/essay/report.md">report.md</a></td>
+            <td>生成毕业设计中期检查报告。</td>
+            <td>作为阶段性论文材料，偏“汇报”和“进度说明”。</td>
+          </tr>
+          <tr>
+            <td><a href="file:///d:/文档/trae/essay/work.md">work.md</a></td>
+            <td>按任务书目标梳理实际工作、代码与产物。</td>
+            <td>后来补齐训练阶段生成的各类图表与表格，避免只列代表性样例。</td>
+          </tr>
+          <tr>
+            <td><a href="file:///d:/文档/trae/essay/analysis_tutorial.md">analysis_tutorial.md</a></td>
+            <td>指导如何撰写论文“实验结果分析”。</td>
+            <td>后续根据用户指出的缺漏，增加 feature 对比图、training_log、global_metric_barplot、复杂度图、抗噪热力图的分析话术。</td>
+          </tr>
+          <tr>
+            <td><a href="file:///d:/文档/trae/essay/README.md">README.md</a> / <a href="file:///d:/文档/trae/essay/README_CN.md">README_CN.md</a></td>
+            <td>把新增脚本纳入结构说明与使用说明。</td>
+            <td>加入融合、续训、全局分析、复杂度、鲁棒性测试等步骤说明。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="current">8. 当前项目状态与待确认事项</h2>
+      <h3>8.1 当前已经可以确认的完成项</h3>
+      <ul>
+        <li>四种时频特征提取链路已建立并有实际产物。</li>
+        <li>7 类单流模型的矩阵训练结果、权重、日志与图表已经存在于结果目录。</li>
+        <li>融合模型的训练日志和图表链路已补齐。</li>
+        <li>全局对比图、复杂度图、鲁棒性总图已经有对应脚本和结果文件。</li>
+        <li>论文配套文档（中期报告、工作总结、分析教程、README）已经成套生成。</li>
+      </ul>
+
+      <h3>8.2 会话中出现但当前目录快照未直接核验到的内容</h3>
+      <ul>
+        <li><code class="inline">dim_reduction_results_full</code> 目录当前没有在本次目录快照中列出，因此与 PCA / t-SNE 相关的具体输出文件，本 HTML 只将其视为“曾被项目说明和分析教程引用的模块产物”，不强行断定当前目录中仍然存在。</li>
+        <li>曾有若干体验脚本和额外文件被用户删除，例如旧的聊天 HTML/PDF 生成脚本，后续整理工作均遵循“尊重用户删除，不擅自恢复”的原则。</li>
+      </ul>
+
+      <h3>8.3 本 HTML 的实际作用</h3>
+      <p>相较于 <a href="file:///d:/文档/trae/essay/work.md">work.md</a> 和 <a href="file:///d:/文档/trae/essay/analysis_tutorial.md">analysis_tutorial.md</a>，本文档更侧重“会话历史归档”与“开发过程解释”。如果要写论文正文，建议结合三份文档使用：</p>
+      <ul>
+        <li><a href="file:///d:/文档/trae/essay/work.md">work.md</a>：用于整理“做了什么”。</li>
+        <li><a href="file:///d:/文档/trae/essay/analysis_tutorial.md">analysis_tutorial.md</a>：用于整理“怎么分析结果”。</li>
+        <li>本文档：用于回溯“为什么这样做、需求是如何一步步演化的”。</li>
+      </ul>
+
+      <h2>附：代表性代码片段说明</h2>
+      <h3>附录 A：结构化训练产物保存模式</h3>
+      <pre><span class="cm"># 训练完成后统一保存 CSV 和图像，而不是时间戳文本日志</span>
+df_history.to_csv(os.path.join(RESULTS_DIR, <span class="str">f"training_log_{model_name}_{feature_name}.csv"</span>), index=<span class="kw">False</span>)
+plot_metrics_history(history, os.path.join(RESULTS_DIR, <span class="str">f"history_{model_name}_{feature_name}"</span>))
+plot_pr_curve(all_labels, all_probs, <span class="num">4</span>, class_names, os.path.join(RESULTS_DIR, <span class="str">f"pr_curve_{model_name}_{feature_name}"</span>))</pre>
+      <p>这段设计是本次会话中“用户不要文本日志、要结构化可分析结果”的直接体现。</p>
+
+      <h3>附录 B：融合结果并入全局对比</h3>
+      <pre><span class="kw">if</span> os.path.exists(FUSION_CSV_FILE):
+    fusion_df = pd.read_csv(FUSION_CSV_FILE)
+    df = pd.concat([df, fusion_df], ignore_index=<span class="kw">True</span>)</pre>
+      <p>这反映了需求从“单流矩阵评估”向“融合实验也要纳入同一全局画布”的演变。</p>
+
+      <h3>附录 C：全模型鲁棒性测试逻辑</h3>
+      <pre><span class="cm"># 为每个模型自动挑选其历史最佳特征，然后在多个 SNR 水平下统一评估</span>
+best_rows = results.sort_values(<span class="str">"f1"</span>, ascending=<span class="kw">False</span>).groupby(<span class="str">"Model"</span>, as_index=<span class="kw">False</span>).first()
+for snr <span class="kw">in</span> [<span class="num">20</span>, <span class="num">10</span>, <span class="num">5</span>, <span class="num">0</span>, <span class="num">-5</span>, <span class="num">-10</span>]:
+    noisy_X = inject_noise(X_test, snr)</pre>
+      <p>这段逻辑体现了“鲁棒性不再只测一个模型，而是要覆盖全部模型并画成一张大图”的最终要求。</p>
+
+      <p class="small">文档结束。建议保存后直接在浏览器中打开 <a href="file:///d:/文档/trae/essay/conversation_history_summary.html">conversation_history_summary.html</a>，使用打印功能导出 PDF。</p>
+    </article>
+  </div>
+</body>
+</html>
