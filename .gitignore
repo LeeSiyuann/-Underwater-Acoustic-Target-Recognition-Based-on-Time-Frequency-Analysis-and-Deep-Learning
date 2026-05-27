@@ -9,6 +9,7 @@ __pycache__/
 feature_data/
 processed_data/
 .trae/
+nwputhesis-main/
 
 # Windows系统文件
 Thumbs.db
