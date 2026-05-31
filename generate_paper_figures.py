@@ -11,6 +11,7 @@ FEATURE_DIR = "feature_data"
 RESULTS_DIR = "dl_comparison_results_gpu"
 OUTPUT_DIR = os.path.join(RESULTS_DIR, "paper_figures")
 ARCH_DIR = os.path.join(OUTPUT_DIR, "model_architectures")
+DIM_REDUCTION_DIR = "dim_reduction_results"
 os.makedirs(ARCH_DIR, exist_ok=True)
 
 
@@ -23,6 +24,62 @@ def save_current_figure(save_stem):
     plt.savefig(save_stem + ".svg", dpi=300, bbox_inches="tight")
     plt.savefig(save_stem + ".pdf", dpi=300, bbox_inches="tight")
     plt.close()
+
+
+def save_figure_with_paths(fig, save_stem):
+    fig.savefig(save_stem + ".png", dpi=300, bbox_inches="tight")
+    fig.savefig(save_stem + ".svg", dpi=300, bbox_inches="tight")
+    fig.savefig(save_stem + ".pdf", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def ensure_dir(path):
+    os.makedirs(path, exist_ok=True)
+
+
+def copy_all_formats(src_stem, dst_stem):
+    copied = []
+    for ext in [".png", ".svg", ".pdf"]:
+        src = src_stem + ext
+        dst = dst_stem + ext
+        if os.path.exists(src):
+            with open(src, "rb") as fsrc:
+                data = fsrc.read()
+            with open(dst, "wb") as fdst:
+                fdst.write(data)
+            copied.append(dst)
+    return copied
+
+
+def create_image_grid(image_paths, titles, save_stem, ncols=2, figsize=(16, 12), suptitle=None):
+    existing = [(img, title) for img, title in zip(image_paths, titles) if os.path.exists(img)]
+    if not existing:
+        return []
+
+    n_images = len(existing)
+    nrows = math.ceil(n_images / ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    if isinstance(axes, np.ndarray):
+        axes = axes.flatten()
+    else:
+        axes = [axes]
+
+    for ax, (img_path, title) in zip(axes, existing):
+        ax.imshow(mpimg.imread(img_path))
+        ax.set_title(title, fontsize=14)
+        ax.axis("off")
+
+    for idx in range(len(existing), len(axes)):
+        axes[idx].axis("off")
+
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=16, fontweight="bold")
+        fig.tight_layout(rect=[0, 0, 1, 0.97])
+    else:
+        fig.tight_layout()
+
+    save_figure_with_paths(fig, save_stem)
+    return [save_stem + ext for ext in [".png", ".svg", ".pdf"]]
 
 
 def add_box(ax, xy, width, height, text, facecolor="#E8F0FE", edgecolor="#1F4E79", fontsize=10):
@@ -254,24 +311,113 @@ def create_feature_montage():
     if not existing:
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    axes = axes.flatten()
-    for ax, (img_path, title) in zip(axes, existing):
-        ax.imshow(mpimg.imread(img_path))
-        ax.set_title(title, fontsize=14)
-        ax.axis("off")
+    create_image_grid(
+        [item[0] for item in existing],
+        [item[1] for item in existing],
+        os.path.join(OUTPUT_DIR, "feature_comparison_montage"),
+        ncols=2,
+        figsize=(16, 12),
+        suptitle="Key Sample Time-Frequency Comparison Montage",
+    )
 
-    for idx in range(len(existing), len(axes)):
-        axes[idx].axis("off")
 
-    plt.tight_layout()
-    save_current_figure(os.path.join(OUTPUT_DIR, "feature_comparison_montage"))
+def create_dimensionality_reduction_montage():
+    image_paths = [
+        os.path.join(DIM_REDUCTION_DIR, "dr_X_mel_full.png"),
+        os.path.join(DIM_REDUCTION_DIR, "dr_X_mfcc_full.png"),
+        os.path.join(DIM_REDUCTION_DIR, "dr_X_cqt_full.png"),
+        os.path.join(DIM_REDUCTION_DIR, "dr_X_stft_full.png"),
+    ]
+    titles = [
+        "Mel: PCA + t-SNE",
+        "MFCC: PCA + t-SNE",
+        "CQT: PCA + t-SNE",
+        "STFT: PCA + t-SNE",
+    ]
+    create_image_grid(
+        image_paths,
+        titles,
+        os.path.join(OUTPUT_DIR, "dimensionality_reduction_montage"),
+        ncols=2,
+        figsize=(16, 12),
+        suptitle="Dimensionality Reduction Results Montage",
+    )
+
+
+def group_result_images(prefix):
+    files = [f for f in os.listdir(RESULTS_DIR) if f.startswith(prefix) and f.endswith(".png")]
+    files.sort()
+    groups = {}
+    for filename in files:
+        stem = filename[:-4]
+        suffix = stem[len(prefix):]
+        if suffix.startswith("fusion_Mel_MFCC"):
+            feature = "Fusion_Mel_MFCC"
+            model = "DualStreamFusionModel"
+        else:
+            parts = suffix.split("_")
+            if len(parts) < 3:
+                continue
+            model = parts[0]
+            feature = "_".join(parts[1:])
+        groups.setdefault(feature, []).append((model, os.path.join(RESULTS_DIR, filename)))
+    return groups
+
+
+def create_result_montages(prefix, output_name_prefix, figure_title_prefix):
+    groups = group_result_images(prefix)
+    index_rows = []
+    for feature, items in groups.items():
+        items.sort(key=lambda x: x[0])
+        image_paths = [path for _, path in items]
+        titles = [model for model, _ in items]
+        save_stem = os.path.join(OUTPUT_DIR, f"{output_name_prefix}_{feature}")
+        created = create_image_grid(
+            image_paths,
+            titles,
+            save_stem,
+            ncols=4,
+            figsize=(20, 12),
+            suptitle=f"{figure_title_prefix}: {feature}",
+        )
+        for path in created:
+            index_rows.append({"Category": output_name_prefix, "Feature": feature, "Path": path})
+    return index_rows
+
+
+def copy_existing_global_figures():
+    stems = [
+        "global_f1_barplot",
+        "global_f1_heatmap",
+        "global_metric_model_feature_heatmaps",
+        "model_parameters_comparison",
+        "model_inference_time_comparison",
+        "robustness_curve_all_models",
+        "robustness_heatmap_all_models",
+    ]
+    copied_rows = []
+    for stem in stems:
+        src_stem = os.path.join(RESULTS_DIR, stem)
+        dst_stem = os.path.join(OUTPUT_DIR, stem)
+        copied = copy_all_formats(src_stem, dst_stem)
+        for path in copied:
+            copied_rows.append({"Category": "global_or_summary", "Feature": "", "Path": path})
+    return copied_rows
 
 
 def main():
+    ensure_dir(OUTPUT_DIR)
     draw_workflow_diagram()
     create_feature_montage()
+    create_dimensionality_reduction_montage()
     generate_all_architecture_diagrams()
+    index_rows = []
+    index_rows.extend(create_result_montages("cm_", "cm_montage", "Confusion Matrix Montage"))
+    index_rows.extend(create_result_montages("history_", "history_montage", "Training History Montage"))
+    index_rows.extend(create_result_montages("pr_curve_", "pr_curve_montage", "PR Curve Montage"))
+    index_rows.extend(copy_existing_global_figures())
+    if index_rows:
+        pd.DataFrame(index_rows).to_csv(os.path.join(OUTPUT_DIR, "paper_figures_index.csv"), index=False)
     print(f"Paper figures will be saved under {OUTPUT_DIR}")
 
 
