@@ -137,7 +137,7 @@ def run_analysis():
             # 4. t-SNE
             print("Running t-SNE (this will take time)...")
             # n_jobs=-1 使用所有 CPU 核心加速
-            tsne = TSNE(n_components=2, perplexity=30, n_iter=1000, 
+            tsne = TSNE(n_components=2, perplexity=30, max_iter=1000, 
                         random_state=RANDOM_STATE, init='pca', learning_rate='auto', n_jobs=-1)
             X_tsne = tsne.fit_transform(X_scaled)
 
