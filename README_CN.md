@@ -15,14 +15,17 @@
 ├── train_comparison.py                 # 模型训练与评估主程序
 ├── resume_training.py                  # 断点续训与OOM保护脚本
 ├── train_fusion.py                     # 多特征融合网络(Mel+MFCC)实验
+├── ablation_experiments.py             # 结构消融实验
+├── explainability_experiments.py       # 可解释性实验(Grad-CAM/Attention/频带消融)
 ├── plot_global_comparison.py           # 全局对比图表生成
 ├── evaluate_complexity.py              # 模型参数量与推理耗时评估
 ├── noise_robustness_test.py            # 鲁棒性与抗噪实验
+├── generate_paper_figures.py           # 论文流程图/结构图/拼图版式生成
 ├── run_pipeline.py                     # 全流程自动化运行脚本
 ├── DeepShip-main/                      # 原始数据   
 ├── processed_data/                     # 预处理后的音频数据(.npy)
 ├── feature_data/                       # 四种特征提取后的特征数据(.npy)和特征提取对比图
-├── dim_reduction_results_full/         # 降维分析结果输出目录
+├── dim_reduction_results/              # 降维分析结果输出目录
 └── dl_comparison_results_gpu/          # 模型训练结果输出目录
 ```
 
@@ -120,6 +123,11 @@ python train_fusion.py
 python plot_global_comparison.py
 python evaluate_complexity.py
 python noise_robustness_test.py
+
+# 步骤 7: 结构消融、可解释性与论文插图生成
+python ablation_experiments.py
+python explainability_experiments.py
+python generate_paper_figures.py
 ```
 
 ## 环境要求

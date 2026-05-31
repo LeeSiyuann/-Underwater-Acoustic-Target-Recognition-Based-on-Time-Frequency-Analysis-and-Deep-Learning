@@ -146,6 +146,7 @@ def test_robustness():
         all_records.append({
             "Model": model_name,
             "Feature": feature_name,
+                "Noise Injection Level": "Feature-level AWGN",
             "SNR (dB)": "Clean",
             "F1 Score": clean_f1
         })
@@ -163,6 +164,7 @@ def test_robustness():
             all_records.append({
                 "Model": model_name,
                 "Feature": feature_name,
+                "Noise Injection Level": "Feature-level AWGN",
                 "SNR (dB)": snr,
                 "F1 Score": noisy_f1
             })
@@ -187,7 +189,7 @@ def test_robustness():
         linewidth=2.2
     )
     plt.gca().invert_xaxis()
-    plt.title("Noise Robustness Comparison Across All Models")
+    plt.title("Feature-level AWGN Robustness Comparison Across All Models")
     plt.xlabel("Signal-to-Noise Ratio (dB) - Lower is noisier")
     plt.ylabel("F1 Score")
     plt.grid(True, alpha=0.3)
@@ -202,7 +204,7 @@ def test_robustness():
     heatmap_df = numeric_df.pivot(index="Model", columns="SNR (dB)", values="F1 Score")
     plt.figure(figsize=(12, 6))
     sns.heatmap(heatmap_df, annot=True, fmt=".4f", cmap="YlOrRd", cbar_kws={'label': 'F1 Score'})
-    plt.title("Noise Robustness Heatmap Across All Models")
+    plt.title("Feature-level AWGN Robustness Heatmap Across All Models")
     plt.tight_layout()
     heatmap_path = os.path.join(RESULTS_DIR, "robustness_heatmap_all_models")
     plt.savefig(heatmap_path + ".png")

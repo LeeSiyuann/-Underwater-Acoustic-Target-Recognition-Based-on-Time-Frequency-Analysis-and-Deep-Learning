@@ -13,7 +13,7 @@ import gc # 引入垃圾回收，虽然内存大，但 STFT 可能真的很大
 # 全局配置
 # ======================
 FEATURE_DIR = "feature_data"
-SAVE_DIR = "dim_reduction_results_full" # 保存到新目录以区分
+SAVE_DIR = "dim_reduction_results"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # 随机种子，保证 t-SNE 结果可复现
@@ -82,8 +82,10 @@ def plot_dim_reduction(X_pca, X_tsne, y, label_map_inv, feature_name):
     axes[1].grid(True, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
-    save_path = os.path.join(SAVE_DIR, f"dr_{feature_name}_full.png")
-    plt.savefig(save_path, dpi=300) # 提高分辨率
+    save_path = os.path.join(SAVE_DIR, f"dr_{feature_name}_full")
+    plt.savefig(save_path + ".png", dpi=300)
+    plt.savefig(save_path + ".svg", dpi=300)
+    plt.savefig(save_path + ".pdf", dpi=300)
     print(f"Saved visualization to {save_path}")
     plt.close()
 

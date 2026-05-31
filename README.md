@@ -15,14 +15,17 @@ This project implements a comprehensive deep learning pipeline for classifying s
 ├── train_comparison.py                 # Main training and evaluation loop
 ├── resume_training.py                  # Resume training and OOM protection
 ├── train_fusion.py                     # Multi-feature fusion (Mel+MFCC) experiment
+├── ablation_experiments.py             # Structure ablation experiments
+├── explainability_experiments.py       # Explainability experiments (Grad-CAM/attention/band ablation)
 ├── plot_global_comparison.py           # Global comparison charts generation
 ├── evaluate_complexity.py              # Model complexity & inference time evaluation
 ├── noise_robustness_test.py            # Noise robustness & SNR testing
+├── generate_paper_figures.py           # Workflow/model diagrams and paper-ready montages
 ├── run_pipeline.py                     # Automation script for the full pipeline
 ├── DeepShip-main/                      # Original dataset directory
 ├── processed_data/                     # Preprocessed audio data (.npy)
 ├── feature_data/                       # Directory for preprocessed features (.npy)
-├── dim_reduction_results_full/         # Output for dimensionality reduction analysis
+├── dim_reduction_results/              # Output for dimensionality reduction analysis
 └── dl_comparison_results_gpu/          # Output for model training results
 ```
 
@@ -120,6 +123,11 @@ python train_fusion.py
 python plot_global_comparison.py
 python evaluate_complexity.py
 python noise_robustness_test.py
+
+# Step 7: Structure Ablation, Explainability, and Paper Figures
+python ablation_experiments.py
+python explainability_experiments.py
+python generate_paper_figures.py
 ```
 
 ## Requirements
