@@ -1,582 +1,473 @@
 # 项目目的、实验状态与论文完成计划参考
 
-本文档基于当前仓库中可核验的代码、结果文件和已有总结材料，输出以下四部分内容：
+本文档基于当前仓库中已经落盘的代码、CSV、图像与说明文件整理，目的有四个：
 
-1. 项目目的总结
-2. 实验状态与关键结果总结
-3. 毕业论文完成计划参考稿
-4. 缺失图表、数据核对项与必须补做实验清单
+1. 给出项目研究目标的当前准确表述。
+2. 记录当前全部实验的真实完成状态与关键结果。
+3. 对照开题报告形成正式评估结论。
+4. 给出后续论文撰写与补充实验的优先级建议。
 
-文档严格遵守以下边界：
+本文档中的数值均以以下结果文件为准：
 
-- 不修改问题定义，不擅自引入新的研究假设。
-- 不编造未在仓库文件中出现的实验数值。
-- 所有数值优先追溯到现有 CSV、脚本和结果目录。
-- 对“已有脚本但当前目录未检索到产物”的部分，明确标注为“待补跑/待确认”。
+- [dl_comparison_results_gpu/final_comparison_results_with_fusion.csv](./dl_comparison_results_gpu/final_comparison_results_with_fusion.csv)
+- [dl_comparison_results_gpu/ablation_results/ablation_summary_results.csv](./dl_comparison_results_gpu/ablation_results/ablation_summary_results.csv)
+- [dl_comparison_results_gpu/explainability_results/fixed_feature_model_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_feature_model_effect.csv)
+- [dl_comparison_results_gpu/explainability_results/fixed_model_feature_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_model_feature_effect.csv)
+- [dl_comparison_results_gpu/explainability_results/frequency_band_ablation_results.csv](./dl_comparison_results_gpu/explainability_results/frequency_band_ablation_results.csv)
+- [dl_comparison_results_gpu/model_complexity.csv](./dl_comparison_results_gpu/model_complexity.csv)
+- [dl_comparison_results_gpu/robustness_all_models.csv](./dl_comparison_results_gpu/robustness_all_models.csv)
+- [dim_reduction_results/analysis_summary.txt](./dim_reduction_results/analysis_summary.txt)
+- [dim_reduction_results/pca_variance_analysis.csv](./dim_reduction_results/pca_variance_analysis.csv)
 
-***
+---
 
 ## 1. 项目目的总结
 
-### 1.1 核心研究目的
+### 1.1 核心研究目标
 
-本项目的核心目标，是围绕 DeepShip 数据集构建一套“基于时频分析与深度学习的水下声学目标识别”实验体系，系统研究不同声学特征表示与不同深度学习模型之间的适配关系。更具体地说，项目不是只追求一个最高分模型，而是同时回答四类问题：
+本项目围绕 DeepShip 数据集，构建“预处理 -> 多时频特征提取 -> 特征可视化分析 -> 深度学习分类 -> 全局对比与扩展分析”的完整实验链路，核心要回答以下问题：
 
-1. 对船舶噪声这类非平稳水下声学信号，哪种时频表征更有效。
-2. 二维卷积网络、残差网络、循环网络和 Transformer 等不同范式模型，对这些特征的适配性有何差异。
-3. 在高性能 GPU 环境下，如何把大规模矩阵实验稳定跑完，并留下完整、可追溯的图表和日志。
-4. 在论文撰写层面，如何把实验过程、结果与分析组织成可直接进入毕业设计论文的材料。
+1. STFT、Mel、MFCC、CQT 等时频表征对水下船舶噪声识别的区分能力有何差异。
+2. CNN、ResNet、RNN、LSTM、Transformer 等模型对不同特征的适配关系如何。
+3. 在统一评价指标下，哪种“特征 + 模型”组合最优，哪些组合存在明显短板。
+4. 当前结果是否足以支撑论文关于“时频表征与深度学习协同影响识别性能”的核心论点。
 
-这一研究目标与以下代码直接对应：
+### 1.2 当前项目范围
 
-- 数据预处理：[preprocess\_deepship\_32k.py](./preprocess_deepship_32k.py)
-- 特征提取：[feature\_extraction\_comparison.py](./feature_extraction_comparison.py)
-- 模型定义：[deep\_learning\_models.py](./deep_learning_models.py)
-- 矩阵训练：[train\_comparison.py](./train_comparison.py)
-- 断点续训：[resume\_training.py](./resume_training.py)
-- 融合实验：[train\_fusion.py](./train_fusion.py)
-- 全局分析：[plot\_global\_comparison.py](./plot_global_comparison.py)
-- 复杂度评估：[evaluate\_complexity.py](./evaluate_complexity.py)
-- 鲁棒性评估：[noise\_robustness\_test.py](./noise_robustness_test.py)
+截至当前结果状态，项目已完成并留有产物的范围为：
 
-### 1.2 当前项目范围边界
+- 数据集：DeepShip。
+- 分类类别：Cargo、Tanker、Tug、Passengership。
+- 单特征：`X_mel`、`X_mfcc`、`X_cqt`、`X_stft`。
+- 单流模型：`SimpleCNN`、`ResNet18`、`ResNet34`、`ResNet50`、`RNN`、`LSTM`、`Transformer`。
+- 融合模型：`DualStreamFusionModel`，对应 `Fusion_Mel_MFCC`。
+- 扩展实验：降维分析、结构消融、序列超参数消融、固定特征/固定模型解释性分析、Grad-CAM、序列显著图、频带遮挡实验、复杂度评估、特征层 AWGN 鲁棒性测试、论文图版式整理。
 
-依据当前仓库和会话历史，项目当前已经明确落在以下范围内：
+当前不应写成“已完成”的内容包括：
 
-- 数据集：DeepShip
-- 分类对象：Cargo、Tanker、Tug、Passengership 四类船舶
-- 特征类型：STFT、Mel、MFCC、CQT，加上一个 `Mel + MFCC` 双流融合实验
-- 单流模型：SimpleCNN、ResNet18、ResNet34、ResNet50、RNN、LSTM、Transformer
-- 融合模型：DualStreamFusionModel
-- 评估维度：Accuracy、Precision、Recall、F1、ROC-AUC、PR 曲线、混淆矩阵、训练历史、模型复杂度、推理时间、抗噪鲁棒性
+- 多数据集迁移或跨数据集泛化实验。
+- 波形层真实噪声重建链路的鲁棒性实验。
+- 传统浅层分类器基线（如 SVM、随机森林等）对比。
+- 多随机种子重复实验或交叉验证。
 
-当前并没有证据表明项目已正式纳入以下内容，因此论文中不应擅自写成“已完成”：
+---
 
-- 波形级别端到端模型
-- 多数据集迁移实验
-- 海洋真实背景噪声库的系统评估
-- 消融实验的完整矩阵
-- 交叉验证或多随机种子重复实验
+## 2. 当前实验状态与关键结果
 
-### 1.3 项目的工程目标
-
-从工程角度看，本项目还承担了一个非常明确的目的：把大规模实验真正跑稳定，而不是只在概念层面讨论。当前仓库中可以验证到的工程化能力包括：
-
-- 大批量训练与数据并行加载
-- STFT 特征单独限流，降低 OOM 风险
-- 断点续训与结果恢复
-- 显存占用统计与批量推荐
-- 结果自动绘图与统一汇总
-
-对应结果：
-
-- [gpu\_memory\_usage.csv](./dl_comparison_results_gpu/gpu_memory_usage.csv)
-- [recommend\_batchsize.csv](./recommend_batchsize.csv)
-- [final\_comparison\_results.csv](./dl_comparison_results_gpu/final_comparison_results.csv)
-
-***
-
-## 2. 实验状态与关键结果总结
-
-## 2.1 当前实验完成状态
-
-### 已有且可核验的实验产物
-
-当前仓库中已经可以确认存在以下结果集合：
+## 2.1 已完成且可直接核验的结果集合
 
 ### 1. 预处理与特征数据
 
-- [processed\_data/X\_audio\_32k.npy](./processed_data/X_audio_32k.npy)
-- [processed\_data/y\_labels.npy](./processed_data/y_labels.npy)
-- [feature\_data/X\_stft.npy](./feature_data/X_stft.npy)
-- [feature\_data/X\_mel.npy](./feature_data/X_mel.npy)
-- [feature\_data/X\_mfcc.npy](./feature_data/X_mfcc.npy)
-- [feature\_data/X\_cqt.npy](./feature_data/X_cqt.npy)
-- 四类样本特征对比图：
-  - [comparison\_Cargo.png](./feature_data/comparison_Cargo.png)
-  - [comparison\_Tanker.png](./feature_data/comparison_Tanker.png)
-  - [comparison\_Tug.png](./feature_data/comparison_Tug.png)
-  - [comparison\_Passengership.png](./feature_data/comparison_Passengership.png)
+- [processed_data/X_audio_32k.npy](./processed_data/X_audio_32k.npy)
+- [processed_data/y_labels.npy](./processed_data/y_labels.npy)
+- [feature_data/X_stft.npy](./feature_data/X_stft.npy)
+- [feature_data/X_mel.npy](./feature_data/X_mel.npy)
+- [feature_data/X_mfcc.npy](./feature_data/X_mfcc.npy)
+- [feature_data/X_cqt.npy](./feature_data/X_cqt.npy)
+- [feature_data/comparison_Cargo.png](./feature_data/comparison_Cargo.png)
+- [feature_data/comparison_Tanker.png](./feature_data/comparison_Tanker.png)
+- [feature_data/comparison_Tug.png](./feature_data/comparison_Tug.png)
+- [feature_data/comparison_Passengership.png](./feature_data/comparison_Passengership.png)
 
-### 2. 单流矩阵训练结果
+### 2. 降维分析
 
-当前 [dl\_comparison\_results\_gpu](./dl_comparison_results_gpu) 中可以确认：
+`dim_reduction_results` 目录当前已存在真实结果，不再属于缺项：
 
-- 28 组 `best_{Model}_{Feature}.pth` 权重文件
-- 28 组 `training_log_{Model}_{Feature}.csv`
-- 28 组 `history_{Model}_{Feature}.*`
-- 28 组 `cm_{Model}_{Feature}.*`
-- 28 组 `pr_curve_{Model}_{Feature}.*`
-- 汇总表 [final\_comparison\_results.csv](./dl_comparison_results_gpu/final_comparison_results.csv)
+- [dim_reduction_results/analysis_summary.txt](./dim_reduction_results/analysis_summary.txt)
+- [dim_reduction_results/pca_variance_analysis.csv](./dim_reduction_results/pca_variance_analysis.csv)
+- [dim_reduction_results/dr_X_mel_full.png](./dim_reduction_results/dr_X_mel_full.png)
+- [dim_reduction_results/dr_X_mfcc_full.png](./dim_reduction_results/dr_X_mfcc_full.png)
+- [dim_reduction_results/dr_X_cqt_full.png](./dim_reduction_results/dr_X_cqt_full.png)
+- [dim_reduction_results/dr_X_stft_full.png](./dim_reduction_results/dr_X_stft_full.png)
 
-### 3. 融合实验结果
+### 3. 单流矩阵训练
 
-- [best\_fusion\_Mel\_MFCC.pth](./dl_comparison_results_gpu/best_fusion_Mel_MFCC.pth)
-- [training\_log\_fusion\_Mel\_MFCC.csv](./dl_comparison_results_gpu/training_log_fusion_Mel_MFCC.csv)
-- [history\_fusion\_Mel\_MFCC.png](./dl_comparison_results_gpu/history_fusion_Mel_MFCC.png)
-- [cm\_fusion\_Mel\_MFCC.png](./dl_comparison_results_gpu/cm_fusion_Mel_MFCC.png)
-- [pr\_curve\_fusion\_Mel\_MFCC.png](./dl_comparison_results_gpu/pr_curve_fusion_Mel_MFCC.png)
-- [final\_fusion\_results.csv](./dl_comparison_results_gpu/final_fusion_results.csv)
+`dl_comparison_results_gpu` 当前已完整保存 4 特征 × 7 模型的实验产物，包括：
 
-### 4. 全局分析、复杂度与鲁棒性结果
+- 28 个 `best_{Model}_{Feature}.pth`
+- 28 个 `training_log_{Model}_{Feature}.csv`
+- 28 组 `history_{Model}_{Feature}.png/.svg/.pdf`
+- 28 组 `cm_{Model}_{Feature}.png/.svg/.pdf`
+- 28 组 `pr_curve_{Model}_{Feature}.png/.svg/.pdf`
+- [dl_comparison_results_gpu/final_comparison_results.csv](./dl_comparison_results_gpu/final_comparison_results.csv)
 
-- [final\_comparison\_results\_with\_fusion.csv](./dl_comparison_results_gpu/final_comparison_results_with_fusion.csv)
-- [global\_f1\_barplot.png](./dl_comparison_results_gpu/global_f1_barplot.png)
-- [global\_f1\_heatmap.png](./dl_comparison_results_gpu/global_f1_heatmap.png)
-- [global\_metric\_model\_feature\_heatmaps.png](./dl_comparison_results_gpu/global_metric_model_feature_heatmaps.png)
-- [model\_complexity.csv](./dl_comparison_results_gpu/model_complexity.csv)
-- [model\_parameters\_comparison.png](./dl_comparison_results_gpu/model_parameters_comparison.png)
-- [model\_inference\_time\_comparison.png](./dl_comparison_results_gpu/model_inference_time_comparison.png)
-- [robustness\_all\_models.csv](./dl_comparison_results_gpu/robustness_all_models.csv)
-- [robustness\_curve\_all\_models.png](./dl_comparison_results_gpu/robustness_curve_all_models.png)
-- [robustness\_heatmap\_all\_models.png](./dl_comparison_results_gpu/robustness_heatmap_all_models.png)
+### 4. 融合实验
 
-### 5. 当前已确认存在的降维分析结果
+- [dl_comparison_results_gpu/best_fusion_Mel_MFCC.pth](./dl_comparison_results_gpu/best_fusion_Mel_MFCC.pth)
+- [dl_comparison_results_gpu/training_log_fusion_Mel_MFCC.csv](./dl_comparison_results_gpu/training_log_fusion_Mel_MFCC.csv)
+- [dl_comparison_results_gpu/history_fusion_Mel_MFCC.png](./dl_comparison_results_gpu/history_fusion_Mel_MFCC.png)
+- [dl_comparison_results_gpu/cm_fusion_Mel_MFCC.png](./dl_comparison_results_gpu/cm_fusion_Mel_MFCC.png)
+- [dl_comparison_results_gpu/pr_curve_fusion_Mel_MFCC.png](./dl_comparison_results_gpu/pr_curve_fusion_Mel_MFCC.png)
+- [dl_comparison_results_gpu/final_fusion_results.csv](./dl_comparison_results_gpu/final_fusion_results.csv)
 
-当前已确认目录 [dim\_reduction\_results](./dim_reduction_results) 中存在以下文件：
+### 5. 全局对比、复杂度与鲁棒性
 
-- [analysis\_summary.txt](./dim_reduction_results/analysis_summary.txt)
-- [dr\_X\_mel\_full.png](./dim_reduction_results/dr_X_mel_full.png)
-- [dr\_X\_mfcc\_full.png](./dim_reduction_results/dr_X_mfcc_full.png)
-- [dr\_X\_cqt\_full.png](./dim_reduction_results/dr_X_cqt_full.png)
-- [dr\_X\_stft\_full.png](./dim_reduction_results/dr_X_stft_full.png)
-- [pca\_variance\_analysis.csv](./dim_reduction_results/pca_variance_analysis.csv)
+- [dl_comparison_results_gpu/final_comparison_results_with_fusion.csv](./dl_comparison_results_gpu/final_comparison_results_with_fusion.csv)
+- [dl_comparison_results_gpu/global_f1_barplot.png](./dl_comparison_results_gpu/global_f1_barplot.png)
+- [dl_comparison_results_gpu/global_f1_heatmap.png](./dl_comparison_results_gpu/global_f1_heatmap.png)
+- [dl_comparison_results_gpu/global_metric_model_feature_heatmaps.png](./dl_comparison_results_gpu/global_metric_model_feature_heatmaps.png)
+- [dl_comparison_results_gpu/model_complexity.csv](./dl_comparison_results_gpu/model_complexity.csv)
+- [dl_comparison_results_gpu/model_parameters_comparison.png](./dl_comparison_results_gpu/model_parameters_comparison.png)
+- [dl_comparison_results_gpu/model_inference_time_comparison.png](./dl_comparison_results_gpu/model_inference_time_comparison.png)
+- [dl_comparison_results_gpu/robustness_all_models.csv](./dl_comparison_results_gpu/robustness_all_models.csv)
+- [dl_comparison_results_gpu/robustness_curve_all_models.png](./dl_comparison_results_gpu/robustness_curve_all_models.png)
+- [dl_comparison_results_gpu/robustness_heatmap_all_models.png](./dl_comparison_results_gpu/robustness_heatmap_all_models.png)
 
-这意味着 PCA / t-SNE 图和方差分析表已经具备论文引用基础，但建议后续统一用更新后的 [dimensionality\_reduction\_analysis.py](./dimensionality_reduction_analysis.py) 继续输出到同一目录，并补齐 `.svg/.pdf` 版本。
+### 6. 消融实验
 
-## 2.2 关键结果总结
+`ablation_results` 目录当前已存在真实结果：
 
-以下数值直接来自 [final\_comparison\_results\_with\_fusion.csv](./dl_comparison_results_gpu/final_comparison_results_with_fusion.csv)。
+- [dl_comparison_results_gpu/ablation_results/ablation_fusion_structure_results.csv](./dl_comparison_results_gpu/ablation_results/ablation_fusion_structure_results.csv)
+- [dl_comparison_results_gpu/ablation_results/ablation_sequence_hyperparams_results.csv](./dl_comparison_results_gpu/ablation_results/ablation_sequence_hyperparams_results.csv)
+- [dl_comparison_results_gpu/ablation_results/ablation_summary_results.csv](./dl_comparison_results_gpu/ablation_results/ablation_summary_results.csv)
+- [dl_comparison_results_gpu/ablation_results/ablation_fusion_structure_f1.png](./dl_comparison_results_gpu/ablation_results/ablation_fusion_structure_f1.png)
+- [dl_comparison_results_gpu/ablation_results/ablation_lstm_hyperparams_heatmap.png](./dl_comparison_results_gpu/ablation_results/ablation_lstm_hyperparams_heatmap.png)
+- [dl_comparison_results_gpu/ablation_results/ablation_transformer_hyperparams_heatmap.png](./dl_comparison_results_gpu/ablation_results/ablation_transformer_hyperparams_heatmap.png)
 
-### 1. 最佳总体结果
+### 7. 可解释性实验
 
-按 `f1` 排序，当前全表最高结果是：
+`explainability_results` 目录当前已存在真实结果：
 
-- `ResNet18 + X_mfcc`
-- `f1 = 0.9982335599857426`
+- [dl_comparison_results_gpu/explainability_results/fixed_feature_model_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_feature_model_effect.csv)
+- [dl_comparison_results_gpu/explainability_results/fixed_model_feature_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_model_feature_effect.csv)
+- [dl_comparison_results_gpu/explainability_results/frequency_band_ablation_results.csv](./dl_comparison_results_gpu/explainability_results/frequency_band_ablation_results.csv)
+- `gradcam_ResNet18_X_mfcc_*`
+- `gradcam_fusion_mel_*`
+- `gradcam_fusion_mfcc_*`
+- `saliency_LSTM_X_cqt_*`
+
+当前目录中未看到 `attention_transformer_*` 结果，因此论文中不应写成“Transformer 注意力可视化结果已完成并已落图”。
+
+### 8. 论文图与拼图版式
+
+`paper_figures` 目录当前已存在流程图、结构图、训练结果拼图和全局图复制结果：
+
+- [dl_comparison_results_gpu/paper_figures/workflow_overview.png](./dl_comparison_results_gpu/paper_figures/workflow_overview.png)
+- [dl_comparison_results_gpu/paper_figures/feature_comparison_montage.png](./dl_comparison_results_gpu/paper_figures/feature_comparison_montage.png)
+- [dl_comparison_results_gpu/paper_figures/dimensionality_reduction_montage.png](./dl_comparison_results_gpu/paper_figures/dimensionality_reduction_montage.png)
+- [dl_comparison_results_gpu/paper_figures/cm_montage_X_mfcc.png](./dl_comparison_results_gpu/paper_figures/cm_montage_X_mfcc.png)
+- [dl_comparison_results_gpu/paper_figures/history_montage_X_cqt.png](./dl_comparison_results_gpu/paper_figures/history_montage_X_cqt.png)
+- [dl_comparison_results_gpu/paper_figures/pr_curve_montage_X_stft.png](./dl_comparison_results_gpu/paper_figures/pr_curve_montage_X_stft.png)
+- [dl_comparison_results_gpu/paper_figures/model_architecture_index.csv](./dl_comparison_results_gpu/paper_figures/model_architecture_index.csv)
+- [dl_comparison_results_gpu/paper_figures/paper_figures_index.csv](./dl_comparison_results_gpu/paper_figures/paper_figures_index.csv)
+
+## 2.2 主实验关键结论
+
+### 1. 全表最佳组合
+
+来自 [final_comparison_results_with_fusion.csv](./dl_comparison_results_gpu/final_comparison_results_with_fusion.csv) 的当前最优结果为：
+
+- 模型：`ResNet18`
+- 特征：`X_mfcc`
 - `accuracy = 0.9982332155477032`
+- `f1 = 0.9982335599857426`
 - `roc_auc = 0.9999552089829588`
 
-这说明在当前这组训练与测试划分下，MFCC 与 ResNet18 的组合表现最佳。
+这说明在当前数据划分与训练配置下，`MFCC + ResNet18` 是最佳组合。
 
-### 2. 各特征下的最佳模型
+### 2. 各特征下当前最佳模型
 
-根据当前汇总表，可归纳为：
-
-| 特征                | 当前最佳模型                  | F1                   |
-| :---------------- | :---------------------- | :------------------- |
-| `X_mel`           | `ResNet18`              | `0.9973504513244354` |
-| `X_mfcc`          | `ResNet18`              | `0.9982335599857426` |
-| `X_cqt`           | `ResNet18`              | `0.9946914001155536` |
-| `X_stft`          | `ResNet18`              | `0.9955870227842644` |
+| 特征 | 当前最佳模型 | F1 |
+| :-- | :-- | :-- |
+| `X_mel` | `ResNet18` | `0.9973504513244354` |
+| `X_mfcc` | `ResNet18` | `0.9982335599857426` |
+| `X_cqt` | `ResNet18` | `0.9946914001155536` |
+| `X_stft` | `ResNet18` | `0.9955870227842644` |
 | `Fusion_Mel_MFCC` | `DualStreamFusionModel` | `0.9955809781067444` |
 
-目前最稳定的结论不是“ResNet50 最好”，而是“ResNet18 在四种单特征上均给出非常强的结果，尤其在 MFCC 上拿到全表最高分”。论文中应据此修正文案，不宜机械强调更深网络一定更优。
+因此当前最稳妥的实验结论不是“网络越深越好”，而是“ResNet18 在四种单特征上都表现最强或接近最强，特别是在 MFCC 上取得全表最佳”。
 
-### 3. 相对较弱的组合
+### 3. 当前较弱组合
 
-当前较弱结果主要集中在 Transformer 的某些组合：
+当前结果明显偏弱的组合包括：
 
 - `Transformer + X_mfcc`：`f1 = 0.3018762762128659`
 - `Transformer + X_stft`：`f1 = 0.501094464773686`
 - `SimpleCNN + X_stft`：`f1 = 0.6588753044450318`
 - `SimpleCNN + X_cqt`：`f1 = 0.7497751075325002`
 
-这说明：
+说明不同模型对不同特征的适配性差异很大，不能简单将“更复杂模型”直接等同于“更优识别性能”。
 
-- 并不是所有“更先进”的序列模型都天然适配所有特征表示。
-- STFT 和 MFCC 在当前实现下，对 Transformer 的适配并不理想。
+### 4. 融合实验的当前定位
 
-### 4. 融合模型的客观定位
-
-融合模型 `DualStreamFusionModel` 的结果为：
+来自 [final_fusion_results.csv](./dl_comparison_results_gpu/final_fusion_results.csv) 的融合结果为：
 
 - `accuracy = 0.9955830388692579`
-- `f1 = 0.9955809781067444`
+- `f1 = 0.9955809781067443`
 - `roc_auc = 0.9999156474072634`
 
-这个结果非常高，但**不是当前全表最高**。因此在论文中更稳妥的说法应是：
+融合结果已经很高，但未超过 `ResNet18 + X_mfcc`。因此在论文中应写为：
 
-- 融合模型取得了接近最优的结果；
-- 但在当前实验条件下，尚未超过 `ResNet18 + MFCC`；
-- 融合实验的价值更多体现在“证明多特征融合可行”，而不是“已经全面超越所有单特征方案”。
+- 多特征融合方案有效且性能接近最优。
+- 在当前实现与训练设置下，它不是全表最佳方案。
+- 融合实验的价值主要在于证明多特征组合可行，而不是证明其绝对优于所有单特征模型。
 
-### 5. 模型复杂度与实时性
+### 5. 降维分析结论
 
-以下结果来自 [model\_complexity.csv](./dl_comparison_results_gpu/model_complexity.csv)：
+来自 [pca_variance_analysis.csv](./dim_reduction_results/pca_variance_analysis.csv) 与 [analysis_summary.txt](./dim_reduction_results/analysis_summary.txt) 的前两主成分累计解释率为：
 
-| 模型                    | 参数量(M)    | 推理时间(ms/sample) |
-| :-------------------- | :-------- | :-------------- |
-| SimpleCNN             | 0.093636  | 0.4791          |
-| ResNet18              | 11.172292 | 2.4587          |
-| ResNet34              | 21.280452 | 3.3933          |
-| ResNet50              | 23.509956 | 4.8571          |
-| RNN                   | 0.988164  | 1.9202          |
-| LSTM                  | 3.946500  | 12.0174         |
-| Transformer           | 5.550340  | 1.1738          |
-| DualStreamFusionModel | 0.055044  | 0.8687          |
+- `X_mel`：`82.8020%`
+- `X_stft`：`70.7099%`
+- `X_cqt`：`48.3359%`
+- `X_mfcc`：`25.9703%`
 
-可以直接得出几条有数据支撑的观察：
+这些数值说明不同特征在低维投影下的信息集中度差异明显，论文中可据此解释“低维可视化分布特性”和“主任务分类性能”之间并非简单一一对应。
 
-- 参数量最大的是 `ResNet50`，为 `23.509956M`
-- 推理最慢的是 `LSTM`，为 `12.0174 ms/sample`
-- 推理最快的是 `SimpleCNN`
-- 当前复杂度表中，`DualStreamFusionModel` 参数量甚至低于 `SimpleCNN`，这一点应在论文中保守表述，并建议复核其统计方式
+### 6. 复杂度与实时性
 
-### 6. 鲁棒性结果
+来自 [model_complexity.csv](./dl_comparison_results_gpu/model_complexity.csv)：
 
-以下结果来自 [robustness\_all\_models.csv](./dl_comparison_results_gpu/robustness_all_models.csv)。
+| 模型 | 参数量(M) | 推理时间(ms/sample) |
+| :-- | :-- | :-- |
+| SimpleCNN | 0.093636 | 0.4791 |
+| ResNet18 | 11.172292 | 2.4587 |
+| ResNet34 | 21.280452 | 3.3933 |
+| ResNet50 | 23.509956 | 4.8571 |
+| RNN | 0.988164 | 1.9202 |
+| LSTM | 3.946500 | 12.0174 |
+| Transformer | 5.550340 | 1.1738 |
+| DualStreamFusionModel | 0.055044 | 0.8687 |
 
-#### 1. 干净数据下
+当前可直接确认：
 
-干净数据下各模型的 F1 都比较高，例如：
+- 参数量最大的是 `ResNet50`。
+- 推理最慢的是 `LSTM`。
+- 推理最快的是 `SimpleCNN`。
+- 该复杂度表应在论文中表述为“统一输入尺寸下的相对复杂度比较”，不宜写成“真实最佳输入尺寸下的绝对复杂度结论”。
 
-- `DualStreamFusionModel`：`0.9955809781067443`
-- `ResNet18 + X_mfcc`：`0.9982335599857426`
-- `LSTM + X_cqt`：`0.9840640669184093`
-- `Transformer + X_cqt`：`0.9814890544581805`
+### 7. 鲁棒性结论
 
-#### 2. 强噪声下
+来自 [robustness_all_models.csv](./dl_comparison_results_gpu/robustness_all_models.csv)：
 
-在 `SNR = -10 dB` 时：
+- 干净数据下，`ResNet18 + X_mfcc` 为 `0.9982335599857426`。
+- `SNR = -10 dB` 时，`LSTM + X_cqt` 仍有 `0.6335107034441776`，为当前最抗噪组合。
+- 同一条件下，`DualStreamFusionModel + Fusion_Mel_MFCC` 下降到 `0.12878380277935308`。
 
-- `LSTM + X_cqt`：`0.6335107034441776`
-- `RNN + X_cqt`：`0.4577372604904366`
-- `Transformer + X_cqt`：`0.2663224156672989`
-- `ResNet34 + X_mel`：`0.23745693809054358`
-- `DualStreamFusionModel`：`0.12878380277935308`
+因此当前真实结果支持的结论是：
 
-因此，当前鲁棒性结果与某些早期乐观表述并不一致。就仓库现有数据看：
+- 主任务最高精度组合不等于最抗噪组合。
+- `LSTM + X_cqt` 在特征层 AWGN 扰动下更稳健。
+- 融合模型不能写成“当前最鲁棒模型”。
+- 鲁棒性实验的准确口径应为“特征层 AWGN 干扰测试”，而不是“真实环境噪声全链路模拟”。
 
-- `LSTM + X_cqt` 是当前最抗噪的一组
-- 多个基于 MFCC 的 CNN/ResNet 模型在低 SNR 下会迅速塌缩到接近同一低值
-- 融合模型在当前噪声注入方式下表现很脆弱，不能在论文中写成“最鲁棒”
+### 8. 消融实验结论
 
-这正是后续论文撰写必须谨慎核对的重点。
+来自 [ablation_summary_results.csv](./dl_comparison_results_gpu/ablation_results/ablation_summary_results.csv)：
 
-## 2.3 当前实验状态一句话结论
+- `DualStreamFusion`：`f1 = 0.8588410732423101`
+- `MFCCOnlyBranch`：`f1 = 0.8049460557678847`
+- `MelOnlyBranch`：`f1 = 0.6892101307950254`
+- `ShallowDualStream`：`f1 = 0.6787177008568984`
 
-如果只用一句话概括当前状态，可以写成：
+说明在当前消融设置下：
 
-> 项目主体实验链路已经完成，单流矩阵训练、融合实验、全局对比、复杂度评估和抗噪测试均已有可追溯结果文件；但降维结果文件当前缺失，且鲁棒性、复杂度和部分汇总图的解释口径仍需在论文中谨慎核对。
+- 双支路完整融合结构优于单支路与浅层融合结构。
+- 结构消融已经有真实结果，不再属于“未完成”。
 
-***
+序列超参数消融中：
 
-## 3. 毕业论文完成计划参考稿
+- `LSTM` 内部最优为 `hs512_layers3`，`f1 = 0.9703087300034815`
+- `Transformer` 内部最优为 `dm128_layers2`，`f1 = 0.9865392372212746`
 
-这份计划仅作为总览参考，真正执行时请遵守“逐章、逐小节规划并留档”的规则，不要把这份总计划直接当成最终执行清单。
+这里应在论文中注明：上述结果属于消融实验内部比较结果，不能直接替代主实验表中的最终成绩。
 
-## 3.1 建议的论文章节结构
+### 9. 可解释性实验结论
 
-结合当前项目材料，建议本科论文主体采用以下结构：
+当前可直接确认：
+
+- 固定特征分析文件为 [fixed_feature_model_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_feature_model_effect.csv)，当前以 `X_cqt` 为固定特征载体。
+- 固定模型分析文件为 [fixed_model_feature_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_model_feature_effect.csv)，当前以 `ResNet18` 为固定模型载体。
+- Grad-CAM 已对 `ResNet18 + X_mfcc` 及融合模型的 Mel/MFCC 支路输出结果。
+- 序列显著图已对 `LSTM + X_cqt` 输出各类别样本结果。
+- [frequency_band_ablation_results.csv](./dl_comparison_results_gpu/explainability_results/frequency_band_ablation_results.csv) 中 `Baseline_F1` 与主结果表不一致，因此只能作为频带遮挡实验内部评估，不应直接作为主实验最终 F1 引用。
+
+## 2.3 当前实验状态的一句话结论
+
+当前项目的主实验链路、扩展实验链路和论文制图链路均已形成真实产物，开题报告中的核心实验主体已经基本完成，且多数结论已有可追溯数据支撑。
+
+---
+
+## 3. 对照开题报告的正式评估结论
+
+## 3.1 逐条对应结论
+
+### 开题研究内容（1）：水下声学信号时频特征提取与分析
+
+完成情况：已完成。
+
+依据：
+
+- 已完成预处理、STFT/Mel/MFCC/CQT 提取与样例图生成。
+- 相关数据和图像均已落盘。
+
+### 开题研究内容（2）：时频特征可视化与可分性分析
+
+完成情况：已完成。
+
+依据：
+
+- `dim_reduction_results` 中已存在 PCA/t-SNE 相关图表和方差分析表。
+- STFT 内存问题已通过脚本优化后完成全量样本分析。
+
+### 开题研究内容（3）：基于深度学习的识别模型构建
+
+完成情况：已完成，且超出原始最小要求。
+
+依据：
+
+- 开题报告明确列出 CNN、ResNet 等；当前实际已完成 `SimpleCNN`、`ResNet18/34/50`、`RNN`、`LSTM`、`Transformer` 及双流融合模型。
+- 已完成端到端训练、评估、可视化与权重保存。
+
+### 开题研究内容（4）：实验验证与性能评估
+
+完成情况：主体完成，但若按最严格口径审视，仍有补强空间。
+
+依据：
+
+- 已完成统一数据划分与统一指标体系下的多模型、多特征矩阵实验。
+- 已完成复杂度评估、特征层 AWGN 鲁棒性测试、结构消融和可解释性分析。
+- 但开题报告中“与传统特征方法及基准模型进行对比实验”“复杂环境下鲁棒性与泛化能力”若按更严格标准理解，目前仍缺少传统浅层分类器基线与更真实噪声场景验证。
+
+## 3.2 是否达到开题报告规定的全部要求
+
+正式结论：
+
+> 当前实验工作已经达到并基本覆盖开题报告的核心研究目标与主要实验内容，足以支撑“时频表征方式显著影响深度学习识别效果，且不同模型与特征之间存在明显适配差异”的核心论点；但如果将开题报告中的“鲁棒性”和“对比基线”按最严格标准执行为更贴近真实环境的全链路鲁棒性验证，以及传统浅层基线对比，那么当前仍存在边界性缺口，不建议直接表述为“所有扩展要求均已零缺口完成”。
+
+换言之：
+
+- 对本科毕设论文主体而言，当前实验已经足够支撑核心论点和正文撰写。
+- 对“是否毫无补充空间地完全满足所有可能的严格解释”这一问题，答案是仍存在少量可补强项。
+
+## 3.3 当前缺口与建议补充方向
+
+### 缺口 1：传统浅层分类器基线缺失
+
+当前状态：
+
+- 已比较多种深度模型与轻量基线 `SimpleCNN`。
+- 尚无 SVM、随机森林、KNN 等传统分类器结果。
+
+建议补充：
+
+- 以 `MFCC`、`CQT` 为代表特征加入 2 到 3 个传统浅层分类器基线。
+- 保持与主实验一致的数据划分与指标口径。
+
+核心价值：
+
+- 可更严谨地支撑“深度学习方法相较传统方法的优势”。
+
+### 缺口 2：鲁棒性仍是特征层 AWGN 口径
+
+当前状态：
+
+- 已有完整 `robustness_all_models.csv` 和总图。
+- 但噪声注入位置在特征层，而非原始波形层。
+
+建议补充：
+
+- 若论文需要更强说服力，可增加“波形层加噪 -> 重新预处理 -> 重新提特征 -> 再测试”的实验。
+- 若不补做，则论文中必须明确写成“特征层 AWGN 干扰测试”。
+
+核心价值：
+
+- 可避免在答辩时被质疑“鲁棒性是否足够贴近真实海洋噪声环境”。
+
+### 缺口 3：泛化能力结论仍偏单次划分
+
+当前状态：
+
+- 已有统一测试集结果和鲁棒性扩展结果。
+- 但没有多随机种子重复实验、交叉验证或跨数据集验证。
+
+建议补充：
+
+- 如果时间允许，可对最佳 2 到 3 个组合做多随机种子重复实验，统计均值和标准差。
+- 若不补做，则论文中将“泛化能力”表述限定为“在当前统一划分测试集上的泛化表现”。
+
+### 缺口 4：可解释性实验中未见 Transformer 注意力图产物
+
+当前状态：
+
+- 已有 Grad-CAM、序列显著图、固定特征/固定模型分析、频带遮挡。
+- 当前目录中未见注意力热图结果。
+
+建议补充：
+
+- 若论文专门设置“Transformer 可解释性”小节，则需要补跑并落图。
+- 若不写专门小节，可不补，但不要在正文中写成“已完成注意力可解释性结果”。
+
+---
+
+## 4. 论文完成计划参考稿
+
+本计划只作为总览参考。真正写作时，仍需严格遵守“逐章 plan、逐小节完成、每节检查并编译”的规则。
+
+## 4.1 推荐的章节组织
 
 ### 第 1 章 绪论
 
-建议包含：
-
 - 研究背景与意义
-- 水下声学目标识别的工程应用场景
 - 国内外研究现状
-- 本文研究内容与技术路线
-- 本文结构安排
-
-素材来源：
-
-- [李思源开题报告最终.md](./李思源开题报告最终.md)
-- [report.md](./report.md)
-- 当前实验结果与项目 README
+- 本文研究内容与创新点
+- 技术路线与论文结构
 
 ### 第 2 章 相关技术基础
 
-建议包含：
+- 水下声学信号特点
+- STFT、Mel、MFCC、CQT 原理
+- CNN、ResNet、RNN、LSTM、Transformer 原理
+- 评价指标定义
 
-- 水下声学信号基本特点
-- STFT、Mel、MFCC、CQT 的理论基础与差异
-- CNN / ResNet / RNN / LSTM / Transformer 的基本原理
-- 评价指标定义：Accuracy、Precision、Recall、F1、ROC-AUC
+### 第 3 章 数据处理与方法设计
 
-素材来源：
-
-- [feature\_extraction\_comparison.py](./feature_extraction_comparison.py)
-- [deep\_learning\_models.py](./deep_learning_models.py)
-
-### 第 3 章 系统设计与研究方法
-
-建议包含：
-
-- 数据集与类别说明
-- 数据预处理流程
-- 四种特征提取流程
+- 数据集说明
+- 预处理流程
+- 四类时频特征提取
 - 单流模型设计
-- 融合模型设计
-- 训练配置、批量调度与断点续训机制
-
-素材来源：
-
-- [preprocess\_deepship\_32k.py](./preprocess_deepship_32k.py)
-- [feature\_extraction\_comparison.py](./feature_extraction_comparison.py)
-- [train\_comparison.py](./train_comparison.py)
-- [resume\_training.py](./resume_training.py)
-- [train\_fusion.py](./train_fusion.py)
+- 双流融合模型设计
+- 训练配置与断点续训策略
 
 ### 第 4 章 实验设计
 
-建议包含：
-
-- 实验环境
+- 硬件与软件环境
 - 数据划分方式
-- 训练超参数设置
-- 模型与特征组合设计
-- 复杂度评估方法
-- 鲁棒性评估方法
-
-素材来源：
-
-- [train\_comparison.py](./train_comparison.py)
-- [evaluate\_complexity.py](./evaluate_complexity.py)
-- [noise\_robustness\_test.py](./noise_robustness_test.py)
+- 模型与特征组合
+- 指标设置
+- 复杂度评估口径
+- 鲁棒性测试口径
 
 ### 第 5 章 实验结果与分析
 
-建议包含：
-
-- 特征图视觉对比分析
-- 矩阵训练总体结果分析
-- 典型训练收敛过程分析
+- 特征样例图分析
+- 降维可视化与可分性分析
+- 主实验结果对比
+- 训练收敛过程分析
 - 混淆矩阵与 PR 曲线分析
-- 全局性能图表分析
-- 模型复杂度与实时性分析
-- 鲁棒性结果分析
-
-素材来源：
-
-- [feature\_data](./feature_data)
-- [dl\_comparison\_results\_gpu](./dl_comparison_results_gpu)
-- [analysis\_tutorial.md](./analysis_tutorial.md)
+- 全局性能热力图分析
+- 复杂度与实时性分析
+- 鲁棒性分析
+- 消融与可解释性分析
 
 ### 第 6 章 结论与展望
 
-建议包含：
-
-- 本文工作总结
-- 主要实验结论
+- 研究工作总结
+- 核心实验结论
 - 局限性
-- 后续工作展望
-
-## 3.2 撰写优先级建议
-
-按当前项目状态，论文撰写优先级建议如下：
-
-### 优先级 A：先写能直接由现有结果支撑的章节
-
-1. 第 3 章 系统设计与研究方法
-2. 第 4 章 实验设计
-3. 第 5 章 中“矩阵训练结果”“复杂度分析”“鲁棒性分析”的初稿
-
-原因：
-
-- 这些内容高度依赖现有代码和现有结果表
-- 当前证据最完整
-- 写作风险最小
-
-### 优先级 B：再写理论与综述章节
-
-1. 第 1 章 绪论
-2. 第 2 章 相关技术基础
-
-原因：
-
-- 这些章节可基于开题报告、文献与代码反推整理
-- 对最终结论依赖较小
-
-### 优先级 C：最后写总结与展望
-
-1. 第 6 章 结论与展望
-
-原因：
-
-- 它必须建立在前述分析已经定稿的基础上
-- 否则容易出现与前文结果不一致的问题
-
-## 3.3 推荐的执行顺序
-
-建议按以下顺序推进：
-
-1. 先核对现有结果文件是否足够支撑论文
-2. 补跑缺失结果或补做必要实验
-3. 先写第 3 章和第 4 章
-4. 基于真实图表写第 5 章
-5. 再回填第 1 章和第 2 章
-6. 最后写第 6 章并统一格式
-
-## 3.4 章节内的小节推进建议
-
-为符合逐小节推进的规则，每章内部建议采用这种粒度：
-
-- 先列本章小节目录
-- 逐小节写
-- 每写完一个小节即检查：
-  - 论述是否与真实结果一致
-  - 图表是否已存在并可引用
-  - 代码与公式是否有出处
-  - 如在 LaTeX 中已录入，及时编译检查版式
-
-***
-
-## 4. 缺失图表、数据核对项与必须补做实验
-
-本节是当前最重要的风险控制区。
-
-## 4.1 当前缺失或待确认的图表/数据
-
-### 1. 降维分析结果文件缺失
-
-当前问题：
-
-- [dimensionality\_reduction\_analysis.py](./dimensionality_reduction_analysis.py) 存在
-- 但目录 [dim\_reduction\_results\_full](./dim_reduction_results_full) 当前未检索到文件
-
-影响：
-
-- 论文中如果写 PCA / t-SNE 结果，当前缺乏可直接插入的真实图表和数据表
-
-建议动作：
-
-- 先确认结果是否被移动到其他目录
-- 若确实不存在，则重新运行脚本并保存输出
-
-### 2. `global_metric_model_feature_heatmaps.png` 已替代旧的聚合多指标图
-
-当前处理：
-
-- 旧的 `global_metric_barplot.*` 已删除
-- [plot\_global\_comparison.py](./plot_global_comparison.py) 已改为输出 `Model + Feature` 双维度多指标热力图
-- 新输出文件为 [global\_metric\_model\_feature\_heatmaps.png](./dl_comparison_results_gpu/global_metric_model_feature_heatmaps.png)
-
-当前建议：
-
-- 论文中统一引用新的双维度热力图
-- 不再使用跨特征求均值的旧聚合柱状图
-
-### 3. 复杂度结果的测量口径需确认
-
-当前问题：
-
-- [evaluate\_complexity.py](./evaluate_complexity.py) 使用固定 dummy input 尺寸
-- 它不是基于每个模型真实最佳特征的实际尺寸逐项测量
-
-影响：
-
-- 如果论文里要写“最佳模型在真实输入下的复杂度”，当前表述会不够严谨
-
-建议动作：
-
-- 保留现有表作为“统一输入尺寸下的相对复杂度比较”
-- 若论文需要更严谨口径，可补做“按最佳特征实际尺寸”的复杂度测量
-
-### 4. 鲁棒性实验的噪声注入位置需确认
-
-当前问题：
-
-- [noise\_robustness\_test.py](./noise_robustness_test.py) 目前是在特征矩阵层面直接注入噪声
-- 不是在原始音频上加噪后重新走预处理与特征提取链路
-
-影响：
-
-- 如果论文要宣称“模拟真实海洋环境噪声条件”，当前证据链还不够完整
-
-建议动作：
-
-- 在论文中诚实表述为“特征层 AWGN 干扰测试”
-- 若需要更真实的环境扰动结论，应补做“波形层加噪 + 重新提特征”的实验
-
-### 5. 融合模型复杂度结果需复核
-
-当前问题：
-
-- `DualStreamFusionModel` 参数量仅 `0.055044M`
-- 这一数值低于 `SimpleCNN`
-
-影响：
-
-- 虽然从代码结构看它确实是轻量双流网络，但这个结论在论文里仍应谨慎解释
-
-建议动作：
-
-- 写论文前再复核一次参数统计
-- 必要时在正文注明“当前统计采用可训练参数总数”
-
-## 4.2 当前缺少的必要图表
-
-如果以本科毕业论文正式提交为目标，当前仍建议补齐或确认以下图表：
-
-### 必须补齐或找回
-
-1. PCA 方差比图/表
-2. t-SNE 可视化图
-3. 若论文需要展示“数据分布”，还应补一个类别样本数量统计表或柱状图
-
-### 建议补充
-
-1. 模型结构示意图
-2. 整体实验流程图
-3. 论文中引用的关键样本时频图拼图版式
-
-其中第 1、2 项如果当前没有现成图，应单独规划，不要在论文中用虚构示意图替代真实实验图。
-
-## 4.3 当前必须补做或至少需要确认的实验
-
-### 1. 降维分析结果复跑或找回
-
-这是最明确的缺项，因为相关输出文件当前不在仓库中。
-
-### 2. 鲁棒性实验口径确认
-
-要先决定论文最终采用哪种表述：
-
-- 如果接受“特征层加噪测试”，现有结果可用，但要如实写明
-- 如果要上升到“环境噪声下的系统鲁棒性”，则必须补做波形层加噪实验
-
-### 3. 若论文需要“消融实验”，当前证据仍不充分
-
-当前仓库已有：
-
-- 单流与融合模型对比
-- 多特征、多模型矩阵结果
-- 复杂度和鲁棒性测试
-
-但还没有严格意义上的“结构消融”，例如：
-
-- 去掉融合支路后的比较
-- 去掉某层模块后的比较
-- 不同 hidden size / 层数的系统消融
-
-如果导师或答辩要求“消融实验”，这部分目前仍属未完成。
-
-## 4.4 当前不建议再盲目扩展的内容
-
-为了避免论文写作阶段失控，当前不建议再随意扩展以下方向，除非有明确指导要求：
-
-- 再新增更多模型
-- 再引入新数据集
-- 再追加大量无结果支撑的新理论模块
-- 在尚未核对当前结果口径前，贸然做大规模参数搜索
-
-当前最重要的是把已有真实结果整理干净、核对清楚并落进论文章节。
-
-***
-
-## 5. 本文档的使用建议
-
-这份文档建议在后续论文撰写中这样使用：
-
-- “项目目的总结”可作为绪论和研究内容部分的提纲底稿
-- “实验状态与关键结果总结”可作为实验章节的事实基线
-- “毕业论文完成计划参考稿”只作为总计划，不替代逐章逐节 plan
-- “缺失图表、数据核对项与必须补做实验清单”应在正式写实验分析前逐项核对
-
-如果后续开始按论文模板正式写作，最推荐的下一步是：
-
-1. 先确认降维结果是否存在；不存在则补跑
-2. 明确鲁棒性实验在论文中的表述口径
-3. 先从“第 3 章 系统设计与研究方法”开始逐小节写作
+- 后续工作
+
+## 4.2 当前最优写作顺序
+
+1. 先写第 3 章“数据处理与方法设计”。
+2. 再写第 4 章“实验设计”。
+3. 再写第 5 章中基于当前真实结果的部分。
+4. 然后补写第 1 章和第 2 章。
+5. 最后写第 6 章，并统一全篇口径。
+
+## 4.3 写作时必须坚持的口径
+
+- 所有结果均以真实 CSV 和图像为准。
+- 融合模型不能写成“全表最优”。
+- 鲁棒性必须写成“特征层 AWGN 干扰测试”，除非后续补做波形层实验。
+- 频带遮挡实验只能作为解释性内部实验引用，不直接替代主结果表。
+- 未落盘的解释性结果不能写成“已完成”。

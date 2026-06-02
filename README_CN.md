@@ -1,130 +1,226 @@
 # DeepShip 船舶噪声分类项目
 
-🌐 语言: [English](./README.md) | [中文](./README_CN.md)
+语言: [English](./README.md) | [中文](./README_CN.md)
 
-本项目实现了一个完整的深度学习流水线，用于基于 DeepShip 数据集对船舶类型（Cargo, Tanker, Tug, Passengership）进行分类。项目涵盖了从原始音频预处理、特征提取、降维可视化分析到多模型对比训练的全过程。
+本仓库面向本科毕业设计论文整理，提供一套完整的 DeepShip 水下声学目标识别实验链路，覆盖：
+
+- 原始音频预处理
+- STFT / Mel / MFCC / CQT 特征提取
+- PCA / t-SNE 特征可视化
+- 28 组单流深度学习对比实验
+- 1 组 Mel+MFCC 融合实验
+- 全局性能汇总与复杂度评估
+- 特征层 AWGN 鲁棒性测试
+- 消融与可解释性实验
+- 论文图表与拼图版式生成
+
+## 当前已核验的结果状态
+
+当前仓库中已经存在以下主要结果目录：
+
+- `processed_data/` 与 `feature_data/`
+- `dim_reduction_results/`
+- `dl_comparison_results_gpu/`
+- `dl_comparison_results_gpu/ablation_results/`
+- `dl_comparison_results_gpu/explainability_results/`
+- `dl_comparison_results_gpu/paper_figures/`
+
+当前全表最优结果来自 [final_comparison_results_with_fusion.csv](./dl_comparison_results_gpu/final_comparison_results_with_fusion.csv)：
+
+- 模型：`ResNet18`
+- 特征：`X_mfcc`
+- `accuracy = 0.9982332155477032`
+- `f1 = 0.9982335599857426`
+- `roc_auc = 0.9999552089829588`
+
+需要特别注意的解释口径：
+
+- 融合模型结果很强，但 **不是当前全表第一**
+- 鲁棒性实验是 **特征层 AWGN 干扰测试**
+- 频带遮挡实验仅用于解释性分析，不能替代主结果表
+- 当前 `explainability_results/` 中未核验到 Transformer 注意力图输出
 
 ## 项目结构
 
-```
+```text
 .
-├── preprocess_deepship_32k.py          # 数据预处理脚本
-├── feature_extraction_comparison.py    # 特征提取 (STFT, Mel, MFCC, CQT)
-├── dimensionality_reduction_analysis.py # PCA & t-SNE 降维分析
-├── deep_learning_models.py             # PyTorch 模型定义
-├── train_comparison.py                 # 模型训练与评估主程序
-├── resume_training.py                  # 断点续训与OOM保护脚本
-├── train_fusion.py                     # 多特征融合网络(Mel+MFCC)实验
-├── ablation_experiments.py             # 结构消融实验
-├── explainability_experiments.py       # 可解释性实验(Grad-CAM/Attention/频带消融)
-├── plot_global_comparison.py           # 全局对比图表生成
-├── evaluate_complexity.py              # 模型参数量与推理耗时评估
-├── noise_robustness_test.py            # 鲁棒性与抗噪实验
-├── generate_paper_figures.py           # 论文流程图/结构图/拼图版式生成
-├── run_pipeline.py                     # 全流程自动化运行脚本
-├── DeepShip-main/                      # 原始数据   
-├── processed_data/                     # 预处理后的音频数据(.npy)
-├── feature_data/                       # 四种特征提取后的特征数据(.npy)和特征提取对比图
-├── dim_reduction_results/              # 降维分析结果输出目录
-└── dl_comparison_results_gpu/          # 模型训练结果输出目录
+├── preprocess_deepship_32k.py
+├── feature_extraction_comparison.py
+├── dimensionality_reduction_analysis.py
+├── deep_learning_models.py
+├── train_comparison.py
+├── resume_training.py
+├── train_fusion.py
+├── plot_global_comparison.py
+├── evaluate_complexity.py
+├── noise_robustness_test.py
+├── ablation_experiments.py
+├── explainability_experiments.py
+├── generate_paper_figures.py
+├── processed_data/
+├── feature_data/
+├── dim_reduction_results/
+└── dl_comparison_results_gpu/
 ```
 
-## 1. 数据预处理 (`preprocess_deepship_32k.py`)
+## 核心流程
 
-将原始 WAV 音频文件转换为适合深度学习的标准格式。
+### 1. 数据预处理
 
-*   **目标采样率**: 32 kHz
-*   **切片时长**: 2.0 秒 (64,000 采样点)
-*   **重叠率**: 50%
-*   **滤波**: 巴特沃斯带通滤波器 (1 Hz - 12 kHz)
-*   **归一化**: 最大幅值归一化
-*   **输出**: `X_audio_32k.npy` 和 `y_labels.npy`
+脚本：[preprocess_deepship_32k.py](./preprocess_deepship_32k.py)
 
-## 2. 特征提取 (`feature_extraction_comparison.py`)
+- 目标采样率：`32 kHz`
+- 切片时长：`2.0 s`
+- 重叠率：`50%`
+- 滤波范围：`1 Hz - 12 kHz`
+- 输出：
+  - [processed_data/X_audio_32k.npy](./processed_data/X_audio_32k.npy)
+  - [processed_data/y_labels.npy](./processed_data/y_labels.npy)
 
-从预处理后的音频中提取四种不同的时频特征：
+### 2. 特征提取
 
-1.  **STFT (短时傅里叶变换)**: 高分辨率线性频率图。
-2.  **Mel Spectrogram (梅尔声谱图)**: 模拟人耳听觉的对数频率图 (CNN 标准输入)。
-3.  **MFCC (梅尔频率倒谱系数)**: 紧凑的去相关特征。
-4.  **CQT (常数 Q 变换)**: 低频高分辨率的对数频率图 (非常适合分析引擎线谱)。
+脚本：[feature_extraction_comparison.py](./feature_extraction_comparison.py)
 
-## 3. 降维分析 (`dimensionality_reduction_analysis.py`)
+已提取特征：
 
-在训练前使用无监督方法可视化特征的可分性。
+- `STFT`
+- `Mel`
+- `MFCC`
+- `CQT`
 
-*   **方法**: PCA (主成分分析) 和 t-SNE。
-*   **指标**: 计算并保存 PCA 解释方差比。
-*   **输出**: 高清散点图和 CSV/TXT 格式的方差报告。
+示例输出：
 
-## 4. 深度学习模型 (`deep_learning_models.py`)
+- [feature_data/X_stft.npy](./feature_data/X_stft.npy)
+- [feature_data/X_mel.npy](./feature_data/X_mel.npy)
+- [feature_data/X_mfcc.npy](./feature_data/X_mfcc.npy)
+- [feature_data/X_cqt.npy](./feature_data/X_cqt.npy)
+- [feature_data/comparison_Cargo.png](./feature_data/comparison_Cargo.png)
 
-使用 PyTorch 实现了多种神经网络架构：
+### 3. 降维分析
 
-*   **CNN 类**:
-    *   `SimpleCNN`: 轻量级基准模型。
-    *   `ResNet18`, `ResNet34`, `ResNet50`: 标准深度残差网络 (已适配单通道输入)。
-*   **RNN 类**:
-    *   `RNN`: 标准循环神经网络。
-    *   `LSTM`: 双向长短期记忆网络。
-*   **Transformer 类**:
-    *   `Transformer`: 标准 Transformer Encoder (用于序列处理)。
+脚本：[dimensionality_reduction_analysis.py](./dimensionality_reduction_analysis.py)
 
-## 5. 训练与评估 (`train_comparison.py`)
+当前真实输出：
 
-专为高性能 GPU (如 RTX 5090) 设计的核心训练脚本。
+- [dim_reduction_results/analysis_summary.txt](./dim_reduction_results/analysis_summary.txt)
+- [dim_reduction_results/pca_variance_analysis.csv](./dim_reduction_results/pca_variance_analysis.csv)
+- [dim_reduction_results/dr_X_mel_full.png](./dim_reduction_results/dr_X_mel_full.png)
+- [dim_reduction_results/dr_X_mfcc_full.png](./dim_reduction_results/dr_X_mfcc_full.png)
+- [dim_reduction_results/dr_X_cqt_full.png](./dim_reduction_results/dr_X_cqt_full.png)
+- [dim_reduction_results/dr_X_stft_full.png](./dim_reduction_results/dr_X_stft_full.png)
 
-*   **优化**:
-    *   **Batch Size**: 默认 2048 (针对 STFT 自动降级为 512 以管理显存)。
-    *   **Num Workers**: 根据 CPU 核心数自动优化 (最高 16)。
-    *   **混合精度**: 支持 CUDA 加速。
-*   **评估指标**:
-    *   准确率 (Accuracy), 精确率 (Precision Weighted), 召回率 (Recall Weighted), F1 分数 (F1 Score Weighted), ROC AUC。
-*   **可视化**:
-    *   混淆矩阵 (Confusion Matrices)。
-    *   PR 曲线 (Precision-Recall Curves)。
-    *   全方位的训练历史曲线 (Loss, Acc, F1 等)。
-*   **日志**:
-    *   仅控制台输出 (禁用文件日志)。
-    *   保存训练日志到 CSV 并记录最大显存占用。
+### 4. 深度学习模型
 
-## 使用说明
+脚本：[deep_learning_models.py](./deep_learning_models.py)
 
-### 1. 自动化流水线 (推荐)
+当前实现模型：
 
-按顺序运行整个工作流：
+- `SimpleCNN`
+- `ResNet18`
+- `ResNet34`
+- `ResNet50`
+- `RNN`
+- `LSTM`
+- `Transformer`
+- `DualStreamFusionModel`（定义与训练位于 [train_fusion.py](./train_fusion.py)）
+
+### 5. 主训练与续训
+
+脚本：
+
+- [train_comparison.py](./train_comparison.py)
+- [resume_training.py](./resume_training.py)
+
+主要设置：
+
+- 默认批大小：`2048`
+- STFT 批大小：`512`
+- `num_workers`：最高 `16`
+- 每组实验输出：
+  - `training_log_*.csv`
+  - `history_*.png/.svg/.pdf`
+  - `cm_*.png/.svg/.pdf`
+  - `pr_curve_*.png/.svg/.pdf`
+  - `best_*.pth`
+
+主结果表：
+
+- [dl_comparison_results_gpu/final_comparison_results.csv](./dl_comparison_results_gpu/final_comparison_results.csv)
+- [dl_comparison_results_gpu/final_fusion_results.csv](./dl_comparison_results_gpu/final_fusion_results.csv)
+- [dl_comparison_results_gpu/final_comparison_results_with_fusion.csv](./dl_comparison_results_gpu/final_comparison_results_with_fusion.csv)
+
+### 6. 全局对比与复杂度评估
+
+脚本：
+
+- [plot_global_comparison.py](./plot_global_comparison.py)
+- [evaluate_complexity.py](./evaluate_complexity.py)
+
+关键输出：
+
+- [dl_comparison_results_gpu/global_f1_barplot.png](./dl_comparison_results_gpu/global_f1_barplot.png)
+- [dl_comparison_results_gpu/global_f1_heatmap.png](./dl_comparison_results_gpu/global_f1_heatmap.png)
+- [dl_comparison_results_gpu/global_metric_model_feature_heatmaps.png](./dl_comparison_results_gpu/global_metric_model_feature_heatmaps.png)
+- [dl_comparison_results_gpu/model_complexity.csv](./dl_comparison_results_gpu/model_complexity.csv)
+- [dl_comparison_results_gpu/model_parameters_comparison.png](./dl_comparison_results_gpu/model_parameters_comparison.png)
+- [dl_comparison_results_gpu/model_inference_time_comparison.png](./dl_comparison_results_gpu/model_inference_time_comparison.png)
+
+### 7. 鲁棒性测试
+
+脚本：[noise_robustness_test.py](./noise_robustness_test.py)
+
+当前输出：
+
+- [dl_comparison_results_gpu/robustness_all_models.csv](./dl_comparison_results_gpu/robustness_all_models.csv)
+- [dl_comparison_results_gpu/robustness_curve_all_models.png](./dl_comparison_results_gpu/robustness_curve_all_models.png)
+- [dl_comparison_results_gpu/robustness_heatmap_all_models.png](./dl_comparison_results_gpu/robustness_heatmap_all_models.png)
+
+说明：
+
+- 当前口径是 **特征层 AWGN 干扰**
+- 不是波形层真实环境噪声重建链路
+
+### 8. 消融与可解释性实验
+
+脚本：
+
+- [ablation_experiments.py](./ablation_experiments.py)
+- [explainability_experiments.py](./explainability_experiments.py)
+
+关键输出：
+
+- [dl_comparison_results_gpu/ablation_results/ablation_summary_results.csv](./dl_comparison_results_gpu/ablation_results/ablation_summary_results.csv)
+- [dl_comparison_results_gpu/ablation_results/ablation_fusion_structure_f1.png](./dl_comparison_results_gpu/ablation_results/ablation_fusion_structure_f1.png)
+- [dl_comparison_results_gpu/ablation_results/ablation_lstm_hyperparams_heatmap.png](./dl_comparison_results_gpu/ablation_results/ablation_lstm_hyperparams_heatmap.png)
+- [dl_comparison_results_gpu/ablation_results/ablation_transformer_hyperparams_heatmap.png](./dl_comparison_results_gpu/ablation_results/ablation_transformer_hyperparams_heatmap.png)
+- [dl_comparison_results_gpu/explainability_results/fixed_feature_model_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_feature_model_effect.csv)
+- [dl_comparison_results_gpu/explainability_results/fixed_model_feature_effect.csv](./dl_comparison_results_gpu/explainability_results/fixed_model_feature_effect.csv)
+- [dl_comparison_results_gpu/explainability_results/frequency_band_ablation_results.csv](./dl_comparison_results_gpu/explainability_results/frequency_band_ablation_results.csv)
+
+### 9. 论文图表生成
+
+脚本：[generate_paper_figures.py](./generate_paper_figures.py)
+
+关键输出：
+
+- [dl_comparison_results_gpu/paper_figures/workflow_overview.png](./dl_comparison_results_gpu/paper_figures/workflow_overview.png)
+- [dl_comparison_results_gpu/paper_figures/feature_comparison_montage.png](./dl_comparison_results_gpu/paper_figures/feature_comparison_montage.png)
+- [dl_comparison_results_gpu/paper_figures/dimensionality_reduction_montage.png](./dl_comparison_results_gpu/paper_figures/dimensionality_reduction_montage.png)
+- [dl_comparison_results_gpu/paper_figures/paper_figures_index.csv](./dl_comparison_results_gpu/paper_figures/paper_figures_index.csv)
+- [dl_comparison_results_gpu/paper_figures/model_architecture_index.csv](./dl_comparison_results_gpu/paper_figures/model_architecture_index.csv)
+
+## 推荐执行顺序
 
 ```bash
-python run_pipeline.py
-```
-
-### 2. 手动分步执行
-
-你也可以单独运行每个步骤：
-
-```bash
-# 步骤 1: 音频预处理
 python preprocess_deepship_32k.py
-
-# 步骤 2: 特征提取
 python feature_extraction_comparison.py
-
-# 步骤 3: 特征分析
 python dimensionality_reduction_analysis.py
-
-# 步骤 4: 模型训练
 python train_comparison.py
-
-# 步骤 5: (可选) 断点续训或特征融合实验
 python resume_training.py
 python train_fusion.py
-
-# 步骤 6: 结果评估与分析生成
 python plot_global_comparison.py
 python evaluate_complexity.py
 python noise_robustness_test.py
-
-# 步骤 7: 结构消融、可解释性与论文插图生成
 python ablation_experiments.py
 python explainability_experiments.py
 python generate_paper_figures.py
@@ -132,17 +228,16 @@ python generate_paper_figures.py
 
 ## 环境要求
 
-*   Python 3.8+
-*   PyTorch (支持 CUDA)
-*   Torchaudio / Torchvision
-*   Librosa
-*   Scikit-learn
-*   Matplotlib / Seaborn
-*   Pandas / NumPy
-*   TQDM
+- Python `3.8+`
+- 支持 CUDA 的 PyTorch
+- Torchvision / Torchaudio
+- Librosa
+- Scikit-learn
+- Matplotlib / Seaborn
+- Pandas / NumPy
 
-## RTX Pro 6000 / 大显存 GPU 优化说明
+## GPU 使用说明
 
-*   训练脚本默认配置 **Batch Size 为 2048**，以充分利用RTX Pro 6000 96GB 的显存。
-*   对于显存占用极高的特征 (如 **STFT**)，Batch Size 会自动限制为 **512**。
-*   如果遇到 OOM (显存不足) 错误，请在 `train_comparison.py` 中减小 `BATCH_SIZE`。
+- 默认批大小针对大显存 GPU 设置
+- STFT 会自动使用更小批大小以降低 OOM 风险
+- 若仍出现显存不足，可在 `train_comparison.py` 中进一步减小批大小
