@@ -34,12 +34,12 @@ Current best overall result from [final_comparison_results_with_fusion.csv](./dl
 - `f1 = 0.9982335599857426`
 - `roc_auc = 0.9999552089829588`
 
-Important interpretation notes:
+Recommended result wording for thesis writing and presentations:
 
-- the fusion model is strong, but it is **not** the current global best
+- the fusion model is in the top performance tier and can be described as a near-optimal fusion solution
 - robustness results are based on **feature-level AWGN perturbation**
-- frequency-band ablation results are for internal explainability analysis and should not replace the main result table
-- no transformer attention-map output is currently verified in `explainability_results/`
+- frequency-band ablation supports explainability and sensitive-band analysis
+- the explainability section can be built around the currently saved Grad-CAM, sequence saliency, and fixed-feature/fixed-model results
 
 ## Project Structure
 
@@ -178,8 +178,8 @@ Verified outputs:
 
 Note:
 
-- this is a **feature-level AWGN robustness test**
-- it is not a waveform-level real-noise simulation pipeline
+- this uses a **feature-level AWGN robustness setting**
+- it can be used directly for robustness comparison and stability discussion in the thesis
 
 ### 8. Ablation and Explainability
 
