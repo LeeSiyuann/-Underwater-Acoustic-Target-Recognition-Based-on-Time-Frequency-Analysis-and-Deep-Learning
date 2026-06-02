@@ -155,7 +155,7 @@ def run_fixed_effect_analysis(results_df):
     feature_subset.to_csv(feature_csv, index=False)
 
     plt.figure(figsize=(12, 6))
-    sns.barplot(data=feature_subset, x="Model", y="f1", palette="viridis")
+    sns.barplot(data=feature_subset, x="Model", y="f1", hue="Model", palette="viridis", legend=False)
     plt.title(f"Fixed Feature Analysis: Model Impact on {fixed_feature}")
     plt.ylim(0.0, 1.0)
     plt.xticks(rotation=15)
@@ -173,7 +173,7 @@ def run_fixed_effect_analysis(results_df):
     model_subset.to_csv(model_csv, index=False)
 
     plt.figure(figsize=(12, 6))
-    sns.barplot(data=model_subset, x="Feature", y="f1", palette="magma")
+    sns.barplot(data=model_subset, x="Feature", y="f1", hue="Feature", palette="magma", legend=False)
     plt.title(f"Fixed Model Analysis: Feature Impact on {fixed_model}")
     plt.ylim(0.0, 1.0)
     plt.tight_layout()
@@ -258,19 +258,25 @@ def run_gradcam_for_fusion():
         x1 = torch.tensor(X_mel_test[sample_idx], dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(DEVICE)
         x2 = torch.tensor(X_mfcc_test[sample_idx], dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(DEVICE)
 
+        original_forward = model.forward
+
         def fusion_forward_with_mel(inp):
-            return model(inp, x2)
+            # 直接调用保存下来的原始 forward，避免 model.forward 被替换后发生递归调用
+            return original_forward(inp, x2)
 
         def fusion_forward_with_mfcc(inp):
-            return model(x1, inp)
+            # 直接调用保存下来的原始 forward，避免 model.forward 被替换后发生递归调用
+            return original_forward(x1, inp)
 
-        # 临时替换 model.forward 以便重用 Grad-CAM
-        original_forward = model.forward
-        model.forward = lambda a, b=None: fusion_forward_with_mel(a)
-        heatmap_mel, _ = cam_mel.generate(x1, class_idx)
-        model.forward = lambda a=None, b=None: fusion_forward_with_mfcc(b if b is not None else a)
-        heatmap_mfcc, _ = cam_mfcc.generate(x2, class_idx)
-        model.forward = original_forward
+        try:
+            # 临时替换 model.forward 以便重用 Grad-CAM
+            model.forward = lambda a, b=None: fusion_forward_with_mel(a)
+            heatmap_mel, _ = cam_mel.generate(x1, class_idx)
+
+            model.forward = lambda a=None, b=None: fusion_forward_with_mfcc(b if b is not None else a)
+            heatmap_mfcc, _ = cam_mfcc.generate(x2, class_idx)
+        finally:
+            model.forward = original_forward
 
         save_overlay(
             X_mel_test[sample_idx],
@@ -309,13 +315,27 @@ def run_sequence_saliency(results_df):
         sample, _ = dataset[0]
         sample = sample.unsqueeze(0).to(DEVICE)
         sample.requires_grad_(True)
-        logits = model(sample)
+
+        # cuDNN 的 RNN/LSTM 在 eval 模式下不支持 backward，这里仅对显著图计算临时禁用 cuDNN。
+        if model_name in ["RNN", "LSTM"]:
+            with torch.backends.cudnn.flags(enabled=False):
+                logits = model(sample)
+        else:
+            logits = model(sample)
+
         pred = logits.argmax(dim=1).item()
         if pred != label:
             continue
 
         model.zero_grad()
-        logits[0, pred].backward()
+        if sample.grad is not None:
+            sample.grad.zero_()
+
+        if model_name in ["RNN", "LSTM"]:
+            with torch.backends.cudnn.flags(enabled=False):
+                logits[0, pred].backward()
+        else:
+            logits[0, pred].backward()
         saliency = sample.grad.abs().detach().cpu().numpy()[0]
         if model_name in ["RNN", "LSTM", "Transformer"]:
             saliency = saliency.T

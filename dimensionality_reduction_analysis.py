@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+from sklearn.decomposition import IncrementalPCA
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 import os
-from tqdm import tqdm
 import seaborn as sns
 import pandas as pd
-import gc # 引入垃圾回收，虽然内存大，但 STFT 可能真的很大
+import gc
+import tempfile
 
 # ======================
 # 全局配置
@@ -18,39 +18,89 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 
 # 随机种子，保证 t-SNE 结果可复现
 RANDOM_STATE = 42
-# 移除采样限制，使用全部数据
-# MAX_SAMPLES = 2000 
+SCALER_BATCH_SIZE = 256
+PCA_BATCH_SIZE = 256
+TSNE_PREP_DIM = 50
 
-def load_and_preprocess(feature_name, y_labels):
+
+def iter_feature_batches(X_mmap, batch_size):
+    """按批次遍历特征，避免一次性把超高维数据全部展开到内存。"""
+    total = len(X_mmap)
+    for start in range(0, total, batch_size):
+        end = min(start + batch_size, total)
+        batch = np.asarray(X_mmap[start:end], dtype=np.float32)
+        batch = batch.reshape(len(batch), -1)
+        yield start, end, batch
+
+
+def prepare_feature_representations(feature_name, y_labels):
     """
-    加载并预处理特征数据
-    :param feature_name: 特征文件名 (e.g., "X_mel.npy")
-    :param y_labels: 标签数据
-    :return: 展平并标准化后的特征, 对应的标签
+    使用全量样本，但通过分批标准化 + 分批增量PCA，避免 STFT 触发内存错误。
+    返回：
+      - X_pca_2d: 用于 PCA 可视化
+      - X_tsne_input: 用于 t-SNE 的低维输入
+      - y: 全量标签
+      - explained_variance: PCA 前两主成分解释方差比
     """
-    print(f"Loading {feature_name}...")
-    X = np.load(os.path.join(FEATURE_DIR, feature_name))
-    
-    # 不再进行下采样，使用全量数据
+    print(f"Loading {feature_name} with memory mapping...")
+    feature_path = os.path.join(FEATURE_DIR, feature_name)
+    X_mmap = np.load(feature_path, mmap_mode="r")
     y = y_labels
+    n_samples = len(X_mmap)
+    flattened_dim = int(np.prod(X_mmap.shape[1:]))
+    tsne_dim = min(TSNE_PREP_DIM, flattened_dim, n_samples - 1 if n_samples > 1 else 1)
 
-    # 展平特征：(N, H, W) -> (N, H*W)
-    # 因为 PCA/t-SNE 需要二维输入 (样本数, 特征维度)
-    print(f"Original shape: {X.shape}")
-    X_flat = X.reshape(len(X), -1)
-    print(f"Flattened shape: {X_flat.shape}")
+    print(f"Original shape: {X_mmap.shape}")
+    print(f"Flattened shape: ({n_samples}, {flattened_dim})")
+    print("Fitting StandardScaler incrementally...")
 
-    # 标准化 (Standardization): 均值为0，方差为1
-    print("Standardizing features...")
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_flat)
-    
-    # 释放原始 X 内存
-    del X
-    del X_flat
+    scaler = StandardScaler(copy=False)
+    for _, _, batch in iter_feature_batches(X_mmap, SCALER_BATCH_SIZE):
+        scaler.partial_fit(batch)
+        del batch
     gc.collect()
-    
-    return X_scaled, y
+
+    print("Fitting IncrementalPCA for 2D visualization...")
+    pca_2d = IncrementalPCA(n_components=2, batch_size=PCA_BATCH_SIZE)
+    for _, _, batch in iter_feature_batches(X_mmap, PCA_BATCH_SIZE):
+        batch = scaler.transform(batch).astype(np.float32, copy=False)
+        pca_2d.partial_fit(batch)
+        del batch
+    gc.collect()
+
+    if tsne_dim >= 2:
+        print(f"Fitting IncrementalPCA for t-SNE pre-reduction ({tsne_dim} dims)...")
+        pca_tsne = IncrementalPCA(n_components=tsne_dim, batch_size=PCA_BATCH_SIZE)
+        for _, _, batch in iter_feature_batches(X_mmap, PCA_BATCH_SIZE):
+            batch = scaler.transform(batch).astype(np.float32, copy=False)
+            pca_tsne.partial_fit(batch)
+            del batch
+        gc.collect()
+    else:
+        pca_tsne = None
+
+    tmp_dir = tempfile.gettempdir()
+    pca_memmap_path = os.path.join(tmp_dir, f"{feature_name}_pca2d.dat")
+    tsne_memmap_path = os.path.join(tmp_dir, f"{feature_name}_tsneprep.dat")
+    X_pca_2d = np.memmap(pca_memmap_path, dtype=np.float32, mode="w+", shape=(n_samples, 2))
+    X_tsne_input = np.memmap(tsne_memmap_path, dtype=np.float32, mode="w+", shape=(n_samples, tsne_dim))
+
+    print("Transforming full dataset in batches...")
+    for start, end, batch in iter_feature_batches(X_mmap, PCA_BATCH_SIZE):
+        batch = scaler.transform(batch).astype(np.float32, copy=False)
+        X_pca_2d[start:end] = pca_2d.transform(batch).astype(np.float32, copy=False)
+        if pca_tsne is not None:
+            X_tsne_input[start:end] = pca_tsne.transform(batch).astype(np.float32, copy=False)
+        else:
+            X_tsne_input[start:end] = batch[:, :tsne_dim]
+        del batch
+    gc.collect()
+
+    explained_variance = pca_2d.explained_variance_ratio_
+    del X_mmap
+    gc.collect()
+
+    return X_pca_2d, X_tsne_input, y, explained_variance
 
 def plot_dim_reduction(X_pca, X_tsne, y, label_map_inv, feature_name):
     """
@@ -113,17 +163,10 @@ def run_analysis():
 
         try:
             # 2. 数据预处理
-            X_scaled, y = load_and_preprocess(f_name, y_all)
+            X_pca, X_tsne_input, y, explained_variance = prepare_feature_representations(f_name, y_all)
 
             # 3. PCA (主成分分析)
-            print("Running PCA...")
-            # 对于 STFT 这样极高维的数据，直接计算全部主成分可能很慢
-            # 但这里只求前2个，svd_solver='arpack' 或 'randomized' 通常很快
-            pca = PCA(n_components=2, random_state=RANDOM_STATE)
-            X_pca = pca.fit_transform(X_scaled)
-            
-            # 获取 PCA 解释方差比
-            explained_variance = pca.explained_variance_ratio_
+            print("PCA representations prepared.")
             print(f"PCA explained variance ratio: {explained_variance}")
             
             # 记录数据
@@ -135,18 +178,17 @@ def run_analysis():
             })
 
             # 4. t-SNE
-            print("Running t-SNE (this will take time)...")
-            # n_jobs=-1 使用所有 CPU 核心加速
+            print("Running t-SNE on PCA-compressed full dataset (this will take time)...")
             tsne = TSNE(n_components=2, perplexity=30, max_iter=1000, 
                         random_state=RANDOM_STATE, init='pca', learning_rate='auto', n_jobs=-1)
-            X_tsne = tsne.fit_transform(X_scaled)
+            X_tsne = tsne.fit_transform(np.asarray(X_tsne_input, dtype=np.float32))
 
             # 5. 可视化
             plot_dim_reduction(X_pca, X_tsne, y, label_map_inv, f_name.replace(".npy", ""))
             
             # 清理内存
-            del X_scaled
             del X_pca
+            del X_tsne_input
             del X_tsne
             gc.collect()
 
